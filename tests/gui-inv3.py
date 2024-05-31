@@ -11,44 +11,13 @@ import os
 # from invesalius.gui import task_navigator
 # from vtkmodules.wx.wxVTKRenderWindowInteractor import wxVTKRenderWindowInteractor
 
-
-class MotorMapGui(wx.Frame):
-    def __init__(self, parent):
+class PlotDlg(wx.Dialog):
+    def __init__(self, parent, title):
         super().__init__(
             parent,
-            title='Rheometer Plots',
-            style=wx.DEFAULT_FRAME_STYLE)
-        self.SetSize(self.GetSize())
-        self.CreateStatusBar()
-        self.SetBackgroundColour('white')
-        # self.SetForegroundColour('white')
-        self.SetIcon(wx.Icon('chart_icon.ico'))
-        self.SetFont(wx.Font(11, wx.DEFAULT, wx.NORMAL, wx.NORMAL, False, ' Helvetica Neue'))
-
-        filemenu = wx.Menu()
-        menuOpen = filemenu.Append(wx.ID_OPEN, "&Open", " Open a file to edit")
-        menuAbout = filemenu.Append(wx.ID_ABOUT, "&About", " Information about this program")
-        menuExit = filemenu.Append(wx.ID_EXIT, "E&xit", " Terminate the program")
-
-        # Creating the menubar.
-        menuBar = wx.MenuBar()
-        menuBar.Append(filemenu, "&File")  # Adding the "filemenu" to the MenuBar
-        self.SetMenuBar(menuBar)  # Adding the MenuBar to the Frame content.
-
-        # Events.
-        self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
-        self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
-        self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
-        self.Bind(wx.EVT_COMBOBOX, self.OnCombo)
-
-        self.main_sizer = wx.BoxSizer(wx.VERTICAL)
-
-        # Data selection variables
-        self.mainData_sizer = wx.StaticBoxSizer(
-            wx.VERTICAL, self,
-            'Data')
-        self.dirname = ''
-        self.data_ctrl = None
+            style=wx.DEFAULT_DIALOG_STYLE,
+            title=title)
+        panel = wx.Panel(self, size=(250, 150))
 
         # Plot configuration variables
         self.mainPlot_sizer = wx.StaticBoxSizer(
@@ -57,13 +26,6 @@ class MotorMapGui(wx.Frame):
         self.txt_sizer = wx.FlexGridSizer(2, 2, 7, 10)
         self.tot_sizer = wx.FlexGridSizer(5, 2, 7, 10)
         self.cyc_sizer = wx.FlexGridSizer(4, 2, 7, 10)
-
-        self.txt_plottype = wx.StaticText(self, -1, 'Plot type:')
-        self.plottypes = ['Dynamic compression | Total', 'Dynamic compression | Cyclic']
-        self.combo_plot = wx.ComboBox(
-            self, -1, size=(-1, -1), choices=self.plottypes,
-            style=wx.CB_DROPDOWN | wx.CB_READONLY)
-        self.txt_test = wx.StaticText(self, -1, '')
 
         self.ctrl_npoints = None
         self.ctrl_dpi = None
@@ -82,42 +44,81 @@ class MotorMapGui(wx.Frame):
         self.txt_initStrain = wx.StaticText(self, -1, 'Initial strain linear region:')
         self.txt_finStrain = wx.StaticText(self, -1, 'Final strain linear region:')
 
+
+class DataGui(wx.Frame):
+    def __init__(self, parent):
+        super().__init__(
+            parent,
+            title='Rheometer Plots',
+            style=wx.DEFAULT_FRAME_STYLE)
+
+        self.CreateStatusBar()
+        self.SetBackgroundColour('white')
+        # self.SetForegroundColour('white')
+        self.SetIcon(wx.Icon('chart_icon.ico'))
+        self.SetFont(wx.Font(11, wx.DEFAULT, wx.NORMAL, wx.NORMAL, False, ' Helvetica Neue'))
+
+        # Creating the menubar.
+        filemenu = wx.Menu()
+        menuOpen = filemenu.Append(wx.ID_OPEN, "&Open", " Open a file to edit")
+        menuAbout = filemenu.Append(wx.ID_ABOUT, "&About", " Information about this program")
+        menuExit = filemenu.Append(wx.ID_EXIT, "E&xit", " Terminate the program")
+
+        menuBar = wx.MenuBar()
+        menuBar.Append(filemenu, "&File")  # Adding the "filemenu" to the MenuBar
+        self.SetMenuBar(menuBar)  # Adding the MenuBar to the Frame content.
+
+        # Events.
+        self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
+        self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
+        self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
+        self.Bind(wx.EVT_COMBOBOX, self.OnCombo)
+
+        self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Data selection variables
+        self.mainData_sizer = wx.StaticBoxSizer(
+            wx.VERTICAL, self,
+            'Data')
+        self.topData_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.dirname = ''
+        self.data_ctrl = None
+
+        self.txt_plottype = wx.StaticText(self, -1, 'Plot type:')
+        self.plottypes = ['Dynamic compression | Total', 'Dynamic compression | Cyclic']
+        self.combo_plot = wx.ComboBox(
+            self, -1, size=(-1, -1), choices=self.plottypes,
+            style=wx.CB_DROPDOWN | wx.CB_READONLY)
+        self.txt_test = wx.StaticText(self, -1, '')
+
         self.init_gui()
 
     def DataSelectGui(self):
-        self.data_ctrl = wx.TextCtrl(self, style=wx.TE_MULTILINE)
+        self.topData_sizer.Add(
+            self.txt_plottype,
+            0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
+        self.topData_sizer.Add(
+            self.combo_plot,
+            0, wx.EXPAND | wx.ALL, 5)
+
+        self.data_ctrl = wx.TextCtrl(self, size=(300, 400), style=wx.TE_MULTILINE)
         # self.control.SetBackgroundColour('black')
         # self.control.SetForegroundColour('white')
+
         self.mainData_sizer.Add(
             self.data_ctrl,
-            -1, wx.EXPAND | wx.ALL, 20)
-
-    def PlotConfigGui(self):
-        ctrl_size = (50, -1)
-        self.ctrl_npoints = wx.TextCtrl(self, -1, '196', size=ctrl_size)
-        self.ctrl_dpi = wx.TextCtrl(self, -1, '300', size=ctrl_size)
-
-        # Cyclic var.
-        self.txt_sizer.AddMany(
-            (
-                (self.txt_plottype, 0, wx.ALIGN_CENTER_VERTICAL), (self.combo_plot, 0),
-                (self.txt_dpi, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_dpi, 0))
-        )
-
-        self.mainPlot_sizer.Add(
-            self.txt_sizer, 0,
-            wx.EXPAND | wx.ALL, 20)
+            1, wx.EXPAND | wx.ALL, 10)
+        self.mainData_sizer.Add(
+            self.topData_sizer,
+            0, wx.ALL, 10)
 
     def init_gui(self):
         self.DataSelectGui()
-        self.PlotConfigGui()
 
         self.main_sizer.Add(
-            self.mainData_sizer, 5,
-            wx.EXPAND | wx.ALL, 10)
-        self.main_sizer.Add(
-            self.mainPlot_sizer, 4,
-            wx.ALL, 10)
+            self.mainData_sizer,
+            5, wx.EXPAND | wx.ALL, 10)
 
         self.SetSizer(self.main_sizer)
         self.main_sizer.Fit(self)
@@ -145,36 +146,38 @@ class MotorMapGui(wx.Frame):
 
     def OnCombo(self, e):
         if self.combo_plot.GetValue() == 'Dynamic compression | Total':
-            self.tot_sizer.AddMany(
-                (
-                    (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_npoints, 0),
-                    (self.cb_displacFit, 0, wx.ALIGN_CENTER_VERTICAL), (self.txt_test, 0),
-                    (self.cb_displacExp, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
-                    (self.cb_dampedFit, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
-                    (self.cb_absoluFit, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0)
-                )
-            )
-            self.mainPlot_sizer.Add(
-                self.tot_sizer, 0,
-                wx.EXPAND | wx.ALL, 20)
+            PlotDlg(self, self.combo_plot.GetValue()).Show()
+            # self.tot_sizer.AddMany(
+            #     (
+            #         (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_npoints, 0),
+            #         (self.cb_displacFit, 0, wx.ALIGN_CENTER_VERTICAL), (self.txt_test, 0),
+            #         (self.cb_displacExp, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
+            #         (self.cb_dampedFit, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
+            #         (self.cb_absoluFit, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0)
+            #     )
+            # )
+            # self.mainPlot_sizer.Add(
+            #     self.tot_sizer, 0,
+            #     wx.EXPAND | wx.ALL, 20)
 
         if self.combo_plot.GetValue() == 'Dynamic compression | Cyclic':
-            self.cyc_sizer.AddMany(
-                (
-                    (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_npoints, 0),
-                    (self.txt_peakSize, 0, wx.ALIGN_CENTER_VERTICAL), (self.txt_test, 0),
-                    (self.txt_initStrain, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
-                    (self.txt_finStrain, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0)
-                )
-            )
-            self.mainPlot_sizer.Add(
-                self.cyc_sizer, 0,
-                wx.EXPAND | wx.ALL, 20)
+            PlotDlg(self, self.combo_plot.GetValue()).Show()
+            # self.cyc_sizer.AddMany(
+            #     (
+            #         (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_npoints, 0),
+            #         (self.txt_peakSize, 0, wx.ALIGN_CENTER_VERTICAL), (self.txt_test, 0),
+            #         (self.txt_initStrain, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
+            #         (self.txt_finStrain, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0)
+            #     )
+            # )
+            # self.mainPlot_sizer.Add(
+            #     self.cyc_sizer, 0,
+            #     wx.EXPAND | wx.ALL, 20)
 
 
 class MyApp(wx.App):
     def OnInit(self):
-        self.dlg = MotorMapGui(None)
+        self.dlg = DataGui(None)
         self.SetTopWindow(self.dlg)
         self.dlg.Show()
         return True
