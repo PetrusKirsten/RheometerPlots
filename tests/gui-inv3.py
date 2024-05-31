@@ -1,9 +1,4 @@
 import wx  # pandas only works with wxPython 4.0.7
-# import vtk
-import sys
-# import serial
-# from . import emg
-import numpy as np
 import os
 
 
@@ -44,7 +39,9 @@ class MotorMapGui(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
         self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
         self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
-        self.main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.Bind(wx.EVT_COMBOBOX, self.OnCombo)
+
+        self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Data selection variables
         self.mainData_sizer = wx.StaticBoxSizer(
@@ -57,29 +54,33 @@ class MotorMapGui(wx.Frame):
         self.mainPlot_sizer = wx.StaticBoxSizer(
             wx.VERTICAL, self,
             'Plot configuration')
-
-        self.top_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.txt_sizer = wx.FlexGridSizer(6, 2, 7, 100)
-
-        self.x_ctrl = None
-        self.y_ctrl = None
-        self.z_ctrl = None
-        self.ecc_ctrl = None
-        self.radius_ctrl = None
-        self.pointsdist_ctrl = None
-        self.generateButton = None
-        self.doneButton = None
-        self.x_marker = None
-        self.y_marker = None
+        self.txt_sizer = wx.FlexGridSizer(2, 2, 7, 10)
+        self.tot_sizer = wx.FlexGridSizer(5, 2, 7, 10)
+        self.cyc_sizer = wx.FlexGridSizer(4, 2, 7, 10)
 
         self.txt_plottype = wx.StaticText(self, -1, 'Plot type:')
+        self.plottypes = ['Dynamic compression | Total', 'Dynamic compression | Cyclic']
+        self.combo_plot = wx.ComboBox(
+            self, -1, size=(-1, -1), choices=self.plottypes,
+            style=wx.CB_DROPDOWN | wx.CB_READONLY)
+        self.txt_test = wx.StaticText(self, -1, '')
 
-        self.x_sta = wx.StaticText(self, -1, 'X axis hotspot:')
-        self.y_sta = wx.StaticText(self, -1, 'Y axis hotspot:')
-        self.z_sta = wx.StaticText(self, -1, 'Z axis hotspot:')
-        self.ecc_sta = wx.StaticText(self, -1, 'Ellipse eccentricity:')
-        self.radius_sta = wx.StaticText(self, -1, 'Max ellipse radius [mm]:')
-        self.pointsdist_sta = wx.StaticText(self, -1, 'Points distance [mm]:')
+        self.ctrl_npoints = None
+        self.ctrl_dpi = None
+
+        self.txt_npoints = wx.StaticText(self, -1, 'Number of points:')
+        self.txt_dpi = wx.StaticText(self, -1, 'Figure resolution (dpi):')
+
+        # Dynamic oscillation - integral
+        self.cb_displacFit = wx.CheckBox(self, -1, 'Fitted height oscillation', (10, 10))
+        self.cb_displacExp = wx.CheckBox(self, -1, 'Experimental height data', (10, 10))
+        self.cb_dampedFit = wx.CheckBox(self, -1, 'Damped wave from stress oscillation', (10, 10))
+        self.cb_absoluFit = wx.CheckBox(self, -1, 'Absolute wave from stress oscillation', (10, 10))
+
+        # Dynamic oscillation - cyclic
+        self.txt_peakSize = wx.StaticText(self, -1, 'Peak range:')
+        self.txt_initStrain = wx.StaticText(self, -1, 'Initial strain linear region:')
+        self.txt_finStrain = wx.StaticText(self, -1, 'Final strain linear region:')
 
         self.init_gui()
 
@@ -92,51 +93,17 @@ class MotorMapGui(wx.Frame):
             -1, wx.EXPAND | wx.ALL, 20)
 
     def PlotConfigGui(self):
-        self.top_sizer.Add(
-            self.txt_plottype, 0,
-            wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
+        ctrl_size = (50, -1)
+        self.ctrl_npoints = wx.TextCtrl(self, -1, '196', size=ctrl_size)
+        self.ctrl_dpi = wx.TextCtrl(self, -1, '300', size=ctrl_size)
 
-        combo_plot = wx.ComboBox(self, -1, size=(220, -1),
-                                 style=wx.CB_DROPDOWN | wx.CB_READONLY)
-        # combo_plot.SetBackgroundColour('black')
-        # combo_plot.SetForegroundColour('white')
-        self.top_sizer.Add(
-            combo_plot, 0,
-            wx.EXPAND | wx.LEFT, 50)
-
-        self.mainPlot_sizer.Add(
-            self.top_sizer, 0,
-            wx.ALL, 10)
-
-        ctrl_size = (70, -1)
-        self.x_ctrl = wx.TextCtrl(self, -1, '155.99', size=ctrl_size)
-        self.y_ctrl = wx.TextCtrl(self, -1, '112.13', size=ctrl_size)
-        self.z_ctrl = wx.TextCtrl(self, -1, '149.12', size=ctrl_size)
-        self.ecc_ctrl = wx.TextCtrl(self, -1, '0.75', size=ctrl_size)
-        self.radius_ctrl = wx.TextCtrl(self, -1, '40', size=ctrl_size)
-        self.pointsdist_ctrl = wx.TextCtrl(self, -1, '20', size=ctrl_size)
-
-        # self.x_ctrl.SetBackgroundColour('black')
-        # self.y_ctrl.SetBackgroundColour('black')
-        # self.z_ctrl.SetBackgroundColour('black')
-        # self.ecc_ctrl.SetBackgroundColour('black')
-        # self.radius_ctrl.SetBackgroundColour('black')
-        # self.pointsdist_ctrl.SetBackgroundColour('black')
-        #
-        # self.x_ctrl.SetForegroundColour('white')
-        # self.y_ctrl.SetForegroundColour('white')
-        # self.z_ctrl.SetForegroundColour('white')
-        # self.ecc_ctrl.SetForegroundColour('white')
-        # self.radius_ctrl.SetForegroundColour('white')
-        # self.pointsdist_ctrl.SetForegroundColour('white')
-
+        # Cyclic var.
         self.txt_sizer.AddMany(
-            ((self.x_sta, 0, wx.ALIGN_CENTER_VERTICAL), (self.x_ctrl, 0),
-             (self.y_sta, 0, wx.ALIGN_CENTER_VERTICAL), (self.y_ctrl, 0),
-             (self.z_sta, 0, wx.ALIGN_CENTER_VERTICAL), (self.z_ctrl, 0),
-             (self.ecc_sta, 0, wx.ALIGN_CENTER_VERTICAL), (self.ecc_ctrl, 0),
-             (self.radius_sta, 0, wx.ALIGN_CENTER_VERTICAL), (self.radius_ctrl, 0),
-             (self.pointsdist_sta, 0, wx.ALIGN_CENTER_VERTICAL), (self.pointsdist_ctrl, 0)))
+            (
+                (self.txt_plottype, 0, wx.ALIGN_CENTER_VERTICAL), (self.combo_plot, 0),
+                (self.txt_dpi, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_dpi, 0))
+        )
+
         self.mainPlot_sizer.Add(
             self.txt_sizer, 0,
             wx.EXPAND | wx.ALL, 20)
@@ -146,10 +113,10 @@ class MotorMapGui(wx.Frame):
         self.PlotConfigGui()
 
         self.main_sizer.Add(
-            self.mainData_sizer, 3,
+            self.mainData_sizer, 5,
             wx.EXPAND | wx.ALL, 10)
         self.main_sizer.Add(
-            self.mainPlot_sizer, 2,
+            self.mainPlot_sizer, 4,
             wx.ALL, 10)
 
         self.SetSizer(self.main_sizer)
@@ -175,6 +142,34 @@ class MotorMapGui(wx.Frame):
             self.data_ctrl.SetValue(f.read())
             f.close()
         dlg.Destroy()
+
+    def OnCombo(self, e):
+        if self.combo_plot.GetValue() == 'Dynamic compression | Total':
+            self.tot_sizer.AddMany(
+                (
+                    (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_npoints, 0),
+                    (self.cb_displacFit, 0, wx.ALIGN_CENTER_VERTICAL), (self.txt_test, 0),
+                    (self.cb_displacExp, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
+                    (self.cb_dampedFit, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
+                    (self.cb_absoluFit, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0)
+                )
+            )
+            self.mainPlot_sizer.Add(
+                self.tot_sizer, 0,
+                wx.EXPAND | wx.ALL, 20)
+
+        if self.combo_plot.GetValue() == 'Dynamic compression | Cyclic':
+            self.cyc_sizer.AddMany(
+                (
+                    (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_npoints, 0),
+                    (self.txt_peakSize, 0, wx.ALIGN_CENTER_VERTICAL), (self.txt_test, 0),
+                    (self.txt_initStrain, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
+                    (self.txt_finStrain, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0)
+                )
+            )
+            self.mainPlot_sizer.Add(
+                self.cyc_sizer, 0,
+                wx.EXPAND | wx.ALL, 20)
 
 
 class MyApp(wx.App):
