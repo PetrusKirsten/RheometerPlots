@@ -13,13 +13,15 @@ from Plotting.DynamicCompression import DynamicCompression
 # from vtkmodules.wx.wxVTKRenderWindowInteractor import wxVTKRenderWindowInteractor
 
 class PlotDlg(wx.Dialog):
-    def __init__(self, parent, title):
+    def __init__(self, parent, title, data_path):
+        self.title = title
         super().__init__(
             parent,
-            title=title,
+            title=self.title,
             style=wx.DEFAULT_DIALOG_STYLE)
 
         # panel = wx.Panel(self, size=(500, 500))
+        self.data_path = data_path
 
         # Dialog configuration variables
         self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -30,7 +32,7 @@ class PlotDlg(wx.Dialog):
 
         self.ctrl_size = (50, -1)
 
-        self.txt_sizer = wx.FlexGridSizer(2, 2, 10, 10)
+        self.txt_sizer = wx.FlexGridSizer(2, 2, 5, 5)
 
         self.txt_npoints = wx.StaticText(self, -1, 'Number of points:')
         self.ctrl_npoints = wx.TextCtrl(self, -1, '196', size=self.ctrl_size)
@@ -48,6 +50,10 @@ class PlotDlg(wx.Dialog):
         # # Dynamic oscillation - cyclic
         self.txt_peakSize, self.txt_initStrain, self.txt_finStrain = None, None, None
         self.ctrl_peakSize, self.ctrl_initStrain, self.ctrl_finStrain = None, None, None
+        self.cb_plotPeak, self.cb_plotYM = None, None
+
+        # Events
+        self.Bind(wx.EVT_BUTTON, self.OnPlot, id=1)
 
     def dynamicFull(self):
         self.cb_displacExp = wx.CheckBox(self, -1, 'Experimental height data.', (10, 10))
@@ -56,16 +62,16 @@ class PlotDlg(wx.Dialog):
         self.cb_absoluFit = wx.CheckBox(self, -1, 'Stress vs. Strain fit: Absolute sine wave.', (10, 10))
 
         self.mainPlot_sizer.AddMany((
-            (self.cb_displacExp, 0, wx.ALL, 5),
-            (self.cb_displacFit, 0, wx.ALL, 5),
-            (self.cb_dampedFit, 0, wx.ALL, 5),
-            (self.cb_absoluFit, 0, wx.ALL, 5)
+            (self.cb_displacExp, 0, wx.ALL, 10),
+            (self.cb_displacFit, 0, wx.ALL, 10),
+            (self.cb_dampedFit, 0, wx.ALL, 10),
+            (self.cb_absoluFit, 0, wx.ALL, 10)
         ))
 
         self.init_gui()
 
     def dynamicCyclic(self):
-        self.txt_sizer = wx.FlexGridSizer(5, 2, 10, 10)
+        self.txt_sizer = wx.FlexGridSizer(5, 2, 5, 5)
 
         self.txt_peakSize = wx.StaticText(self, -1, 'Stress peak range:')
         self.ctrl_peakSize = wx.TextCtrl(self, -1, '3', size=self.ctrl_size)
@@ -75,22 +81,35 @@ class PlotDlg(wx.Dialog):
         self.ctrl_finStrain = wx.TextCtrl(self, -1, '18', size=self.ctrl_size)
 
         self.txt_sizer.AddMany((
-            (self.txt_peakSize, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_peakSize, 0, wx.ALIGN_CENTER_VERTICAL),
-            (self.txt_initStrain, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_initStrain, 0, wx.ALIGN_CENTER_VERTICAL),
-            (self.txt_finStrain, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_finStrain, 0, wx.ALIGN_CENTER_VERTICAL)
+            (self.txt_peakSize, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.ctrl_peakSize, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.txt_initStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.ctrl_initStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.txt_finStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.ctrl_finStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
+        ))
+
+        self.cb_plotPeak = wx.CheckBox(self, -1, 'Highlight peak region.', (10, 10))
+        self.cb_plotYM = wx.CheckBox(self, -1, "Show Young's Modulus linear fit.", (10, 10))
+
+        self.mainPlot_sizer.AddMany((
+            (self.cb_plotPeak, 0, wx.ALL, 10),
+            (self.cb_plotYM, 0, wx.ALL, 10)
         ))
 
         self.init_gui()
 
     def init_gui(self):
         self.txt_sizer.AddMany((
-            (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_npoints, 0, wx.ALIGN_CENTER_VERTICAL),
-            (self.txt_dpi, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_dpi, 0, wx.ALIGN_CENTER_VERTICAL)
+            (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.ctrl_npoints, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.txt_dpi, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.ctrl_dpi, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
         ))
 
         self.mainPlot_sizer.Add(
             self.txt_sizer, 1,
-            wx.EXPAND | wx.ALL, 10)
+            wx.EXPAND | wx.ALL, 5)
 
         self.mainPlot_sizer.Add(
             self.okButton, 0,
@@ -99,12 +118,30 @@ class PlotDlg(wx.Dialog):
 
         self.main_sizer.Add(
             self.mainPlot_sizer, 1,
-            wx.EXPAND | wx.ALL, 10)
+            wx.EXPAND | wx.ALL, 20)
 
         self.SetSizer(self.main_sizer)
         self.main_sizer.Fit(self)
         self.Layout()
 
+    def OnPlot(self, e):
+        if self.title == 'Dynamic compression | Cyclic':
+            print(f'Plotting {self.title}...')
+
+            data = DynamicCompression(
+                data_path=self.data_path,
+                points=int(self.ctrl_npoints.GetValue()),
+                figure_size=(34, 14)
+            )
+
+            DynamicCompression.cyclic_plot(
+                data,
+                peak_size=int(self.ctrl_peakSize.GetValue()),
+                initial_strain=float(self.ctrl_initStrain.GetValue()),
+                final_strain=float(self.ctrl_finStrain.GetValue()),
+                plot_peak=False,
+                plot_fit=False
+            )
 
 class DataGui(wx.Frame):
     def __init__(self, parent):
@@ -122,9 +159,9 @@ class DataGui(wx.Frame):
 
         # Creating the menubar.
         filemenu = wx.Menu()
-        menuOpen = filemenu.Append(wx.ID_OPEN, "&Open", " Open a file to edit")
-        menuAbout = filemenu.Append(wx.ID_ABOUT, "&About", " Information about this program")
-        menuExit = filemenu.Append(wx.ID_EXIT, "E&xit", " Terminate the program")
+        menuOpen = filemenu.Append(wx.ID_OPEN, "&Open", " Open a data file.")
+        menuAbout = filemenu.Append(wx.ID_ABOUT, "&About", " Information about this program.")
+        menuExit = filemenu.Append(wx.ID_EXIT, "E&xit", " Terminate the program.")
 
         menuBar = wx.MenuBar()
         menuBar.Append(filemenu, "&File")  # Adding the "filemenu" to the MenuBar
@@ -139,6 +176,7 @@ class DataGui(wx.Frame):
         self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
         # Data selection variables
+        self.data_path = 'No file selected.'
         self.mainData_sizer = wx.StaticBoxSizer(
             wx.VERTICAL, self,
             'Data')
@@ -191,28 +229,34 @@ class DataGui(wx.Frame):
 
     def OnAbout(self, e):
         # Create a message dialog box
+        print(f'Opening "About" dialog...')
         dlg = wx.MessageDialog(self, 'By Petrus Kirsten', 'About Rheometer Plots', wx.OK)
         dlg.ShowModal()  # Shows it
         dlg.Destroy()  # finally destroy it when finished.
 
     def OnExit(self, e):
+        print(f'Closing the frame...')
         self.Close(True)  # Close the frame.
 
     def OnOpen(self, e):
         """ Open a file"""
+        print(f'Opening a data file...')
         dlg = wx.FileDialog(self, 'Select the data', self.dirname, '', '*.*', wx.FD_OPEN)
         if dlg.ShowModal() == wx.ID_OK:
             self.filename = dlg.GetFilename()
             self.dirname = dlg.GetDirectory()
-            f = open(os.path.join(self.dirname, self.filename), 'r')
+            self.data_path = os.path.join(self.dirname, self.filename)
+            f = open(self.data_path, 'r')
             self.data_ctrl.SetValue(f.read())
             f.close()
         dlg.Destroy()
+        print(f'File selected: {self.data_path}')
 
     def OnCombo(self, e):
         plottype_choice = self.combo_plot.GetValue()
+        print(f'Plot type selected: {plottype_choice}.')
 
-        dlg = PlotDlg(self, plottype_choice)
+        dlg = PlotDlg(self, plottype_choice, self.data_path)
         dlg.Show()
 
         if plottype_choice == 'Dynamic compression | Total':
@@ -222,7 +266,7 @@ class DataGui(wx.Frame):
             dlg.dynamicCyclic()
 
         if plottype_choice == 'Oscillatory sweep':
-            dlg.dynamicCyclic()
+            dlg.oscSweep()
 
 
 class MyApp(wx.App):

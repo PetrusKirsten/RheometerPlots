@@ -251,7 +251,6 @@ class DynamicCompression:
         ax.yaxis.set_minor_locator(MultipleLocator(0.25))
         ax.set_ylim([-0.25, self.s.max() + self.s.max() * 0.15])
 
-
         # Plot the linear range and its values
         ax.axvspan(self.i_linreg, self.f_linreg, alpha=0.07, color=color_linrange)
         ax.text(self.i_linreg + 0.02, self.s.max() + self.s.max() * 0.1,
