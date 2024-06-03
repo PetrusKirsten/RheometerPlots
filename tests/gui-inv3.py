@@ -1,5 +1,6 @@
 import wx  # pandas only works with wxPython 4.0.7
 import os
+from Plotting.DynamicCompression import DynamicCompression
 
 
 # from . import spiralTMS
@@ -15,34 +16,94 @@ class PlotDlg(wx.Dialog):
     def __init__(self, parent, title):
         super().__init__(
             parent,
-            style=wx.DEFAULT_DIALOG_STYLE,
-            title=title)
-        panel = wx.Panel(self, size=(250, 150))
+            title=title,
+            style=wx.DEFAULT_DIALOG_STYLE)
 
-        # Plot configuration variables
+        # panel = wx.Panel(self, size=(500, 500))
+
+        # Dialog configuration variables
+        self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+
         self.mainPlot_sizer = wx.StaticBoxSizer(
             wx.VERTICAL, self,
             'Plot configuration')
-        self.txt_sizer = wx.FlexGridSizer(2, 2, 7, 10)
-        self.tot_sizer = wx.FlexGridSizer(5, 2, 7, 10)
-        self.cyc_sizer = wx.FlexGridSizer(4, 2, 7, 10)
 
-        self.ctrl_npoints = None
-        self.ctrl_dpi = None
+        self.ctrl_size = (50, -1)
+
+        self.txt_sizer = wx.FlexGridSizer(2, 2, 10, 10)
 
         self.txt_npoints = wx.StaticText(self, -1, 'Number of points:')
+        self.ctrl_npoints = wx.TextCtrl(self, -1, '196', size=self.ctrl_size)
+
         self.txt_dpi = wx.StaticText(self, -1, 'Figure resolution (dpi):')
+        self.ctrl_dpi = wx.TextCtrl(self, -1, '300', size=self.ctrl_size)
 
-        # Dynamic oscillation - integral
-        self.cb_displacFit = wx.CheckBox(self, -1, 'Fitted height oscillation', (10, 10))
-        self.cb_displacExp = wx.CheckBox(self, -1, 'Experimental height data', (10, 10))
-        self.cb_dampedFit = wx.CheckBox(self, -1, 'Damped wave from stress oscillation', (10, 10))
-        self.cb_absoluFit = wx.CheckBox(self, -1, 'Absolute wave from stress oscillation', (10, 10))
+        self.okButton = wx.Button(
+            self, 1,
+            'Plot', size=(-1, -1))
 
-        # Dynamic oscillation - cyclic
-        self.txt_peakSize = wx.StaticText(self, -1, 'Peak range:')
+        # Dynamic oscillation - full
+        self.cb_displacFit, self.cb_displacExp, self.cb_dampedFit, self.cb_absoluFit = None, None, None, None
+
+        # # Dynamic oscillation - cyclic
+        self.txt_peakSize, self.txt_initStrain, self.txt_finStrain = None, None, None
+        self.ctrl_peakSize, self.ctrl_initStrain, self.ctrl_finStrain = None, None, None
+
+    def dynamicFull(self):
+        self.cb_displacExp = wx.CheckBox(self, -1, 'Experimental height data.', (10, 10))
+        self.cb_displacFit = wx.CheckBox(self, -1, 'Fitted height data.', (10, 10))
+        self.cb_dampedFit = wx.CheckBox(self, -1, 'Stress vs. Strain fit: Damped sine wave.', (10, 10))
+        self.cb_absoluFit = wx.CheckBox(self, -1, 'Stress vs. Strain fit: Absolute sine wave.', (10, 10))
+
+        self.mainPlot_sizer.AddMany((
+            (self.cb_displacExp, 0, wx.ALL, 5),
+            (self.cb_displacFit, 0, wx.ALL, 5),
+            (self.cb_dampedFit, 0, wx.ALL, 5),
+            (self.cb_absoluFit, 0, wx.ALL, 5)
+        ))
+
+        self.init_gui()
+
+    def dynamicCyclic(self):
+        self.txt_sizer = wx.FlexGridSizer(5, 2, 10, 10)
+
+        self.txt_peakSize = wx.StaticText(self, -1, 'Stress peak range:')
+        self.ctrl_peakSize = wx.TextCtrl(self, -1, '3', size=self.ctrl_size)
         self.txt_initStrain = wx.StaticText(self, -1, 'Initial strain linear region:')
+        self.ctrl_initStrain = wx.TextCtrl(self, -1, '10', size=self.ctrl_size)
         self.txt_finStrain = wx.StaticText(self, -1, 'Final strain linear region:')
+        self.ctrl_finStrain = wx.TextCtrl(self, -1, '18', size=self.ctrl_size)
+
+        self.txt_sizer.AddMany((
+            (self.txt_peakSize, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_peakSize, 0, wx.ALIGN_CENTER_VERTICAL),
+            (self.txt_initStrain, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_initStrain, 0, wx.ALIGN_CENTER_VERTICAL),
+            (self.txt_finStrain, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_finStrain, 0, wx.ALIGN_CENTER_VERTICAL)
+        ))
+
+        self.init_gui()
+
+    def init_gui(self):
+        self.txt_sizer.AddMany((
+            (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_npoints, 0, wx.ALIGN_CENTER_VERTICAL),
+            (self.txt_dpi, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_dpi, 0, wx.ALIGN_CENTER_VERTICAL)
+        ))
+
+        self.mainPlot_sizer.Add(
+            self.txt_sizer, 1,
+            wx.EXPAND | wx.ALL, 10)
+
+        self.mainPlot_sizer.Add(
+            self.okButton, 0,
+            wx.EXPAND | wx.ALL, 10)
+        self.okButton.Enable(True)
+
+        self.main_sizer.Add(
+            self.mainPlot_sizer, 1,
+            wx.EXPAND | wx.ALL, 10)
+
+        self.SetSizer(self.main_sizer)
+        self.main_sizer.Fit(self)
+        self.Layout()
 
 
 class DataGui(wx.Frame):
@@ -52,6 +113,7 @@ class DataGui(wx.Frame):
             title='Rheometer Plots',
             style=wx.DEFAULT_FRAME_STYLE)
 
+        self.filename = None
         self.CreateStatusBar()
         self.SetBackgroundColour('white')
         # self.SetForegroundColour('white')
@@ -86,7 +148,10 @@ class DataGui(wx.Frame):
         self.data_ctrl = None
 
         self.txt_plottype = wx.StaticText(self, -1, 'Plot type:')
-        self.plottypes = ['Dynamic compression | Total', 'Dynamic compression | Cyclic']
+        self.plottypes = [
+            'Dynamic compression | Total',
+            'Dynamic compression | Cyclic',
+            'Oscillatory sweep']
         self.combo_plot = wx.ComboBox(
             self, -1, size=(-1, -1), choices=self.plottypes,
             style=wx.CB_DROPDOWN | wx.CB_READONLY)
@@ -145,41 +210,30 @@ class DataGui(wx.Frame):
         dlg.Destroy()
 
     def OnCombo(self, e):
-        if self.combo_plot.GetValue() == 'Dynamic compression | Total':
-            PlotDlg(self, self.combo_plot.GetValue()).Show()
-            # self.tot_sizer.AddMany(
-            #     (
-            #         (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_npoints, 0),
-            #         (self.cb_displacFit, 0, wx.ALIGN_CENTER_VERTICAL), (self.txt_test, 0),
-            #         (self.cb_displacExp, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
-            #         (self.cb_dampedFit, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
-            #         (self.cb_absoluFit, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0)
-            #     )
-            # )
-            # self.mainPlot_sizer.Add(
-            #     self.tot_sizer, 0,
-            #     wx.EXPAND | wx.ALL, 20)
+        plottype_choice = self.combo_plot.GetValue()
 
-        if self.combo_plot.GetValue() == 'Dynamic compression | Cyclic':
-            PlotDlg(self, self.combo_plot.GetValue()).Show()
-            # self.cyc_sizer.AddMany(
-            #     (
-            #         (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL), (self.ctrl_npoints, 0),
-            #         (self.txt_peakSize, 0, wx.ALIGN_CENTER_VERTICAL), (self.txt_test, 0),
-            #         (self.txt_initStrain, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0),
-            #         (self.txt_finStrain, 0, wx.ALIGN_CENTER_VERTICAL), (wx.StaticText(self, -1, ''), 0)
-            #     )
-            # )
-            # self.mainPlot_sizer.Add(
-            #     self.cyc_sizer, 0,
-            #     wx.EXPAND | wx.ALL, 20)
+        dlg = PlotDlg(self, plottype_choice)
+        dlg.Show()
+
+        if plottype_choice == 'Dynamic compression | Total':
+            dlg.dynamicFull()
+
+        if plottype_choice == 'Dynamic compression | Cyclic':
+            dlg.dynamicCyclic()
+
+        if plottype_choice == 'Oscillatory sweep':
+            dlg.dynamicCyclic()
 
 
 class MyApp(wx.App):
+    def __init__(self, redirect=False, filename=None, useBestVisual=False, clearSigInt=True):
+        super().__init__(redirect, filename, useBestVisual, clearSigInt)
+        self.frame = None
+
     def OnInit(self):
-        self.dlg = DataGui(None)
-        self.SetTopWindow(self.dlg)
-        self.dlg.Show()
+        self.frame = DataGui(None)
+        self.SetTopWindow(self.frame)
+        self.frame.Show()
         return True
 
 
