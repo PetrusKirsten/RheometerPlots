@@ -570,6 +570,11 @@ class DynamicCompression:
         return self.fig
 
 
+class OscillatorySweep:
+    def __init__(self):
+        pass
+
+
 # Global configs
 np.set_printoptions(threshold=np.inf)  # print the entire array
 cm = 1 / 2.54  # centimeters in inches
@@ -588,10 +593,10 @@ if __name__ == "__main__":
         plot_peak=True, plot_fit=True)
     plt.show()
 
-    # data = Plotting(
+    # data = rheoplots(
     #     data,
     #     n_points)
-    # Plotting.total_plot(
+    # rheoplots.total_plot(
     #     data,
     #     True, True, True,
     #     True)
