@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
@@ -59,7 +60,6 @@ class DynamicCompression:
     ):
         self.data_path = data_path
         self.points = points
-
         self.figure_size = figure_size
         self.fig = plt.figure(figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm))
         self.gs = None
@@ -425,7 +425,8 @@ class DynamicCompression:
         self.i_linreg = (0.5 / 10) * self.i_linreg_pct  # Convert the strain values to time values
         self.f_linreg = (0.5 / 10) * self.f_linreg_pct  # (0.5 s)/(10 %) × x%
 
-        self.fig.suptitle(f'Dynamic compression - Cycle analysis ({self.data_path})', alpha=0.9)
+        self.fig.suptitle(f'Dynamic compression - Cycle analysis '
+                          f'({os.path.basename(self.data_path).split("/")[-1]})', alpha=0.9)
 
         if self.stress and self.peak and self.ym:
             self.gs = GridSpec(2, 2, width_ratios=ratios)
@@ -481,7 +482,8 @@ class DynamicCompression:
         # Plots configs
         self.gs = GridSpec(1, 1)
         ax1 = self.fig.add_subplot(self.gs[:, 0])
-        self.fig.suptitle(f'Dynamic compression - Full oscillation ({self.data_path})', alpha=0.9)
+        self.fig.suptitle(f'Dynamic compression - Full oscillation '
+                          f'({os.path.basename(self.data_path).split("/")[-1]})', alpha=0.9)
 
         # Left axis configs
         ax1.set_xlim([0, 2 * self.n])
@@ -570,9 +572,142 @@ class DynamicCompression:
         return self.fig
 
 
-class OscillatorySweep:
-    def __init__(self):
-        pass
+class Sweep:
+    def __init__(
+            self,
+            data_path,
+            figure_size=(22, 15)
+    ):
+        self.data_path = data_path
+        self.figure_size = figure_size
+
+        self.fig = plt.figure(figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm))
+        self.gs = GridSpec(1, 1)
+        self.fig.subplots_adjust(hspace=0)
+
+        # Collecting the data
+        self.data = pd.read_csv(self.data_path)
+
+        self.timeTotal = self.data['t in s'].to_numpy()
+        self.timeElement = self.data['t_seg in s'].to_numpy()
+        self.strainStress = self.data['ɣ in %'].to_numpy()
+        self.compViscosity = self.data['|η*| in mPas'].to_numpy()
+        self.temperature = self.data['T in °C'].to_numpy()
+        self.storageModulus = self.data["G' in Pa"].to_numpy()
+        self.lossModulus = self.data['G" in Pa'].to_numpy()
+
+        self.shearStress = None
+        self.frequency = None
+        self.angVeloc = None
+
+    def stress(
+            self,
+            colorStorage='navy', colorLoss='crimson'
+    ):
+        self.shearStress = self.data['τ in Pa'].to_numpy()
+
+        # Plots configs
+        plt.style.use('seaborn-v0_8-ticks')
+        ax1 = self.fig.add_subplot(self.gs[:, 0])
+        self.fig.suptitle(f'Stress sweeps '
+                          f'({os.path.basename(self.data_path).split("/")[-1]})', alpha=0.9)
+
+        # Right axis configs
+        ax2 = ax1.twinx()
+        ax2.set_yscale('log')
+        ax2.set_xscale('log')
+        ax2.set_ylabel('Loss modulus G" (Pa)', color=colorLoss)
+        ax2.set_ylim(
+            [int(round(np.min(self.lossModulus) - np.min(self.lossModulus) * 0.7, -2)),
+             int(round(np.max(self.lossModulus) + np.max(self.lossModulus) * 2.7, -3))])
+        ax2.tick_params(axis='y', which='major', labelcolor=colorLoss, colors=colorLoss)
+        ax2.tick_params(axis='y', which='minor', labelcolor=colorLoss, colors=colorLoss, labelsize=8)
+        ax2.spines['right'].set_color(colorLoss)
+        ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        ax2.set_xlim([1, round(self.shearStress[-1], -1)])
+
+        # Left axis configs
+        ax1.set_yscale('log')
+        ax1.set_xscale('log')
+        ax1.set_ylabel("Storage modulus G' (Pa)", color=colorStorage)
+        ax1.set_ylim(
+            [int(round(np.min(self.storageModulus) - np.min(self.storageModulus) * 0.8, -3)),
+             int(round(np.max(self.storageModulus) + np.max(self.storageModulus) * 0.2, -4))])
+        ax1.tick_params(axis='y', which='major', labelcolor=colorStorage, colors=colorStorage)
+        ax1.tick_params(axis='y', which='minor', labelcolor=colorStorage, colors=colorStorage, labelsize=8)
+        ax2.spines['left'].set_color(colorStorage)
+        ax1.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        ax1.set_xlim([1, round(self.shearStress[-1], -1)])
+
+        ax1.set_xlabel('Shear stress (Pa)')
+        ax1.xaxis.set_minor_locator(MultipleLocator(10))
+        ax1.xaxis.set_major_locator(MultipleLocator(20))
+
+        # Experimental data
+        ax1.scatter(
+            self.shearStress, self.storageModulus,
+            color=colorStorage, alpha=0.5, s=45, marker='o', edgecolors='k')
+
+        ax2.scatter(
+            self.shearStress, self.lossModulus,
+            color=colorLoss, alpha=0.5, s=45, marker='o', edgecolors='k')
+
+        self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+    def oscilatory(
+            self,
+            colorStorage='navy', colorLoss='crimson'
+    ):
+        self.frequency = self.data['f in Hz'].to_numpy()
+        self.angVeloc = 2 * np.pi * self.frequency
+
+        # Plots configs
+        plt.style.use('seaborn-v0_8-ticks')
+        ax1 = self.fig.add_subplot(self.gs[:, 0])
+        self.fig.suptitle(f'Frequency sweeps '
+                          f'({os.path.basename(self.data_path).split("/")[-1]})', alpha=0.9)
+
+        # Right axis configs
+        ax2 = ax1.twinx()
+        ax2.set_yscale('log')
+        ax2.set_xscale('log')
+        ax2.set_ylabel('Loss modulus G" (Pa)', color=colorLoss)
+        ax2.set_ylim(
+            [int(round(np.min(self.lossModulus) - np.min(self.lossModulus) * 0.7, -2)),
+             int(round(np.max(self.lossModulus) + np.max(self.lossModulus) * 2.7, -3))])
+        ax2.tick_params(axis='y', which='major', labelcolor=colorLoss, colors=colorLoss)
+        ax2.tick_params(axis='y', which='minor', labelcolor=colorLoss, colors=colorLoss, labelsize=8)
+        ax2.spines['right'].set_color(colorLoss)
+        ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        ax2.set_xlim([1, round(self.angVeloc[-1], -1)])
+
+        # Left axis configs
+        ax1.set_yscale('log')
+        ax1.set_xscale('log')
+        ax1.set_ylabel("Storage modulus G' (Pa)", color=colorStorage)
+        ax1.set_ylim(
+            [int(round(np.min(self.storageModulus) - np.min(self.storageModulus) * 0.8, -3)),
+             int(round(np.max(self.storageModulus) + np.max(self.storageModulus) * 0.2, -4))])
+        ax1.tick_params(axis='y', which='major', labelcolor=colorStorage, colors=colorStorage)
+        ax1.tick_params(axis='y', which='minor', labelcolor=colorStorage, colors=colorStorage, labelsize=8)
+        ax2.spines['left'].set_color(colorStorage)
+        ax1.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        ax1.set_xlim([1, round(self.angVeloc[-1], -1)])
+
+        ax1.set_xlabel('Angular velocity (rad/s)')
+        # ax1.xaxis.set_minor_locator(MultipleLocator(10))
+        # ax1.xaxis.set_major_locator(MultipleLocator(20))
+
+        # Experimental data
+        ax1.scatter(
+            self.angVeloc, self.storageModulus,
+            color=colorStorage, alpha=0.5, s=45, marker='o', edgecolors='k')
+
+        ax2.scatter(
+            self.angVeloc, self.lossModulus,
+            color=colorLoss, alpha=0.5, s=45, marker='o', edgecolors='k')
+
+        self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
 
 # Global configs
@@ -581,17 +716,17 @@ cm = 1 / 2.54  # centimeters in inches
 fonts(folder_path='C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
 
 if __name__ == "__main__":
-    path = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data/haribo-9v2.csv"
+    print('plotting.py exec as main.')
 
-    data = DynamicCompression(
-        path,
-        196)
-    DynamicCompression.cyclic_plot(
-        data,
-        peak_size=5,
-        stress=True, peak=True, ym=True,
-        plot_peak=True, plot_fit=True)
-    plt.show()
+    # data = DynamicCompression(
+    #     path,
+    #     196)
+    # DynamicCompression.cyclic_plot(
+    #     data,
+    #     peak_size=5,
+    #     stress=True, peak=True, ym=True,
+    #     plot_peak=True, plot_fit=True)
+    # plt.show()
 
     # data = rheoplots(
     #     data,
@@ -602,4 +737,10 @@ if __name__ == "__main__":
     #     True)
     # plt.show()
 
-    print('DynamicCompression exec as main.')
+    path = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data/frequency-sweep_BB_280524-1.csv"
+
+    data = Sweep(data_path=path)
+
+    Sweep.oscilatory(data)
+
+    plt.show()

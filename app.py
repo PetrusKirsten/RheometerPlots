@@ -2,14 +2,16 @@ import wx  # pandas only works with wxPython 4.0.7
 import os
 from matplotlib import pyplot as plt
 from rheoplots.plotting import DynamicCompression
-from rheoplots.plotting import OscillatorySweep
+from rheoplots.plotting import Sweep
 
 # TODO: create an executable. pyInstaller
 
 plottypes = [
-    'Oscillatory sweep',
+    'Amplitude sweeps | Stress sweep',
+    'Oscillatory sweeps',
     'Dynamic compression | Full',
-    'Dynamic compression | Cyclic']
+    'Dynamic compression | Cyclic'
+]
 
 
 class PlotDlg(wx.Dialog):
@@ -99,7 +101,10 @@ class PlotDlg(wx.Dialog):
 
         self.init_gui()
 
-    def oscSweep(self):  # TODO
+    def stressSweep(self):
+        self.init_gui()
+
+    def oscilSweep(self):
         self.init_gui()
 
     def init_gui(self):
@@ -130,11 +135,19 @@ class PlotDlg(wx.Dialog):
     def OnPlot(self, e):
         if self.title == plottypes[0]:
             print(f'Plotting {self.title}...')
-            data = OscillatorySweep(
-                # TODO
-            )
+
+            Sweep.stress(Sweep(data_path=self.data_path))
+            plt.show()
 
         if self.title == plottypes[1]:
+            print(f'Plotting {self.title}...')
+
+            Sweep.oscilatory(Sweep(data_path=self.data_path))
+            # plt.show()
+
+        if self.title == plottypes[2]:
+            print(f'Plotting {self.title}...')
+
             data = DynamicCompression(
                 data_path=self.data_path,
                 points=int(self.ctrl_npoints.GetValue()),
@@ -148,9 +161,10 @@ class PlotDlg(wx.Dialog):
                 plot_exp_h=self.cb_displacExp.GetValue()
             )
             plt.show()
+
+        if self.title == plottypes[3]:
             print(f'Plotting {self.title}...')
 
-        if self.title == plottypes[2]:
             data = DynamicCompression(
                 data_path=self.data_path,
                 points=int(self.ctrl_npoints.GetValue()),
@@ -165,7 +179,6 @@ class PlotDlg(wx.Dialog):
                 plot_fit=self.cb_plotYM.GetValue()
             )
             plt.show()
-            print(f'Plotting {self.title}...')
 
 
 class DataGui(wx.Frame):
@@ -179,7 +192,7 @@ class DataGui(wx.Frame):
         self.CreateStatusBar()
         self.SetBackgroundColour('white')
         # self.SetForegroundColour('white')
-        self.SetIcon(wx.Icon('data\chart_icon.ico'))
+        self.SetIcon(wx.Icon('images/chart_icon.ico'))
         self.SetFont(wx.Font(11, wx.DEFAULT, wx.NORMAL, wx.NORMAL, False, ' Helvetica Neue'))
 
         # Creating the menubar.
@@ -262,14 +275,15 @@ class DataGui(wx.Frame):
     def OnOpen(self, e):
         """ Open a file"""
         print(f'Opening a data file...')
-        dlg = wx.FileDialog(self, 'Select the data', self.dirname, '', '*.*', wx.FD_OPEN)
+        dlg = wx.FileDialog(self, 'Select the data', self.dirname, '', '*.*', wx.FD_OPEN | wx.FD_MULTIPLE)
         if dlg.ShowModal() == wx.ID_OK:
             self.filename = dlg.GetFilename()
             self.dirname = dlg.GetDirectory()
             self.data_path = os.path.join(self.dirname, self.filename)
-            f = open(self.data_path, 'r')
-            self.data_ctrl.SetValue(f.read())
-            f.close()
+            file = open(self.data_path, 'r')
+            self.data_ctrl.SetValue(file.read())
+            file.close()
+
         dlg.Destroy()
         self.combo_plot.Enable(True)
         print(f'File selected: {self.data_path}')
@@ -282,12 +296,15 @@ class DataGui(wx.Frame):
         dlg.Show()
 
         if plottype_choice == plottypes[0]:
-            dlg.oscSweep()
+            dlg.stressSweep()
 
         if plottype_choice == plottypes[1]:
-            dlg.dynamicFull()
+            dlg.oscilSweep()
 
         if plottype_choice == plottypes[2]:
+            dlg.dynamicFull()
+
+        if plottype_choice == plottypes[3]:
             dlg.dynamicCyclic()
 
 
