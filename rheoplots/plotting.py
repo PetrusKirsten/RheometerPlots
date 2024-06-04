@@ -586,16 +586,16 @@ class Sweep:
         self.fig.subplots_adjust(hspace=0)
 
         # Collecting the data
-        self.data = pd.read_csv(self.data_path)
-
-        self.timeTotal = self.data['t in s'].to_numpy()
-        self.timeElement = self.data['t_seg in s'].to_numpy()
-        self.strainStress = self.data['ɣ in %'].to_numpy()
-        self.compViscosity = self.data['|η*| in mPas'].to_numpy()
-        self.temperature = self.data['T in °C'].to_numpy()
-        self.storageModulus = self.data["G' in Pa"].to_numpy()
-        self.lossModulus = self.data['G" in Pa'].to_numpy()
-
+        self.data = None
+        self.timeTotal = None
+        self.timeElement = None
+        self.strainStress = None
+        self.compViscosity = None
+        self.temperature = None
+        self.storageModulus = None
+        self.storageModulusErr = None
+        self.lossModulus = None
+        self.lossModulusErr = None
         self.shearStress = None
         self.frequency = None
         self.angVeloc = None
@@ -658,14 +658,37 @@ class Sweep:
             self,
             colorStorage='navy', colorLoss='crimson'
     ):
-        self.frequency = self.data['f in Hz'].to_numpy()
-        self.angVeloc = 2 * np.pi * self.frequency
+        gPrime = np.array([])
+        gDouble = np.array([])
+
+        for file in range(len(self.data_path)):
+            self.data = pd.read_csv(self.data_path[file])
+
+            self.timeTotal = self.data['t in s'].to_numpy()
+            self.timeElement = self.data['t_seg in s'].to_numpy()
+            self.strainStress = self.data['ɣ in %'].to_numpy()
+            self.compViscosity = self.data['|η*| in mPas'].to_numpy()
+            self.temperature = self.data['T in °C'].to_numpy()
+
+            self.frequency = self.data['f in Hz'].to_numpy()
+            self.angVeloc = 2 * np.pi * self.frequency
+
+            gPrime = np.append(gPrime, self.data["G' in Pa"].to_numpy())
+            gDouble = np.append(gDouble, self.data['G" in Pa'].to_numpy())
+
+        gPrime = gPrime.reshape(len(self.data_path), int(len(gPrime) / len(self.data_path)))
+        gDouble = gDouble.reshape(len(self.data_path), int(len(gDouble) / len(self.data_path)))
+
+        self.storageModulus = gPrime.mean(axis=0)
+        self.storageModulusErr = gPrime.std(axis=0)
+        self.lossModulus = gDouble.mean(axis=0)
+        self.lossModulusErr = gDouble.std(axis=0)
 
         # Plots configs
         plt.style.use('seaborn-v0_8-ticks')
         ax1 = self.fig.add_subplot(self.gs[:, 0])
         self.fig.suptitle(f'Frequency sweeps '
-                          f'({os.path.basename(self.data_path).split("/")[-1]})', alpha=0.9)
+                          f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
 
         # Right axis configs
         ax2 = ax1.twinx()

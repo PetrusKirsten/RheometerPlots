@@ -143,7 +143,7 @@ class PlotDlg(wx.Dialog):
             print(f'Plotting {self.title}...')
 
             Sweep.oscilatory(Sweep(data_path=self.data_path))
-            # plt.show()
+            plt.show()
 
         if self.title == plottypes[2]:
             print(f'Plotting {self.title}...')
@@ -275,11 +275,16 @@ class DataGui(wx.Frame):
     def OnOpen(self, e):
         """ Open a file"""
         print(f'Opening a data file...')
-        dlg = wx.FileDialog(self, 'Select the data', self.dirname, '', '*.*', wx.FD_OPEN | wx.FD_MULTIPLE)
+        dlg = wx.FileDialog(
+            self,
+            'Select the data',
+            self.dirname, '', '*.*',
+            wx.FD_OPEN | wx.FD_MULTIPLE)
+
         if dlg.ShowModal() == wx.ID_OK:
-            self.filename = dlg.GetFilename()
+            self.filename = dlg.GetFilenames()
             self.dirname = dlg.GetDirectory()
-            self.data_path = os.path.join(self.dirname, self.filename)
+            self.data_path = os.path.join(self.filename[0])
             file = open(self.data_path, 'r')
             self.data_ctrl.SetValue(file.read())
             file.close()
@@ -292,7 +297,7 @@ class DataGui(wx.Frame):
         plottype_choice = self.combo_plot.GetValue()
         print(f'Plot type selected: {plottype_choice}.')
 
-        dlg = PlotDlg(self, plottype_choice, self.data_path)
+        dlg = PlotDlg(self, plottype_choice, self.filename)
         dlg.Show()
 
         if plottype_choice == plottypes[0]:
