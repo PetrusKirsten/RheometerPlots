@@ -25,16 +25,22 @@ class PlotDlg(wx.Dialog):
         # panel = wx.Panel(self, size=(500, 500))
         self.data_path = data_path
 
-        # Dialog configuration variables
+        # Dialog sizers
         self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 
         self.mainPlot_sizer = wx.StaticBoxSizer(
             wx.VERTICAL, self,
             'Plot configuration')
 
-        self.ctrl_size = (50, -1)
-
         self.txt_sizer = wx.FlexGridSizer(2, 2, 5, 5)
+
+        self.colorSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.color1 = 'dodgerblue'
+        self.color2 = 'hotpink'
+
+        # Dialog elements
+        self.ctrl_size = (50, -1)
 
         self.txt_npoints = wx.StaticText(self, -1, 'Number of points:')
         self.ctrl_npoints = wx.TextCtrl(self, -1, '196', size=self.ctrl_size)
@@ -42,20 +48,30 @@ class PlotDlg(wx.Dialog):
         self.txt_dpi = wx.StaticText(self, -1, 'Figure resolution (dpi):')
         self.ctrl_dpi = wx.TextCtrl(self, -1, '300', size=self.ctrl_size)
 
-        self.okButton = wx.Button(
+        self.colorButton1 = wx.Button(
             self, 1,
+            'Color 1', size=(-1, -1))
+
+        self.colorButton2 = wx.Button(
+            self, 2,
+            'Color 2', size=(-1, -1))
+
+        self.plotButton = wx.Button(
+            self, 3,
             'Plot', size=(-1, -1))
 
-        # Dynamic oscillation - full
+        # Variables: Dynamic oscillation - full
         self.cb_displacFit, self.cb_displacExp, self.cb_dampedFit, self.cb_absoluFit = None, None, None, None
 
-        # # Dynamic oscillation - cyclic
+        # Variables: Dynamic oscillation - cyclic
         self.txt_peakSize, self.txt_initStrain, self.txt_finStrain = None, None, None
         self.ctrl_peakSize, self.ctrl_initStrain, self.ctrl_finStrain = None, None, None
         self.cb_plotPeak, self.cb_plotYM = None, None
 
         # Events
-        self.Bind(wx.EVT_BUTTON, self.OnPlot, id=1)
+        self.Bind(wx.EVT_BUTTON, self.OnColor1, id=1)
+        self.Bind(wx.EVT_BUTTON, self.OnColor2, id=2)
+        self.Bind(wx.EVT_BUTTON, self.OnPlot, id=3)
 
     def dynamicFull(self):
         self.cb_displacExp = wx.CheckBox(self, -1, 'Experimental height data.', (10, 10))
@@ -117,12 +133,24 @@ class PlotDlg(wx.Dialog):
 
         self.mainPlot_sizer.Add(
             self.txt_sizer, 1,
-            wx.EXPAND | wx.ALL, 5)
+            wx.EXPAND | wx.ALL, 15)
+
+        self.colorSizer.Add(
+            self.colorButton1, 1,
+            wx.EXPAND | wx.ALL, 0)
+
+        self.colorSizer.Add(
+            self.colorButton2, 1,
+            wx.EXPAND | wx.ALL, 0)
 
         self.mainPlot_sizer.Add(
-            self.okButton, 0,
-            wx.EXPAND | wx.ALL, 10)
-        self.okButton.Enable(True)
+            self.colorSizer, 0,
+            wx.EXPAND | wx.ALL, 15)
+
+        self.mainPlot_sizer.Add(
+            self.plotButton, 0,
+            wx.EXPAND | wx.ALL, 5)
+        self.plotButton.Enable(True)
 
         self.main_sizer.Add(
             self.mainPlot_sizer, 1,
@@ -136,13 +164,17 @@ class PlotDlg(wx.Dialog):
         if self.title == plottypes[0]:
             print(f'Plotting {self.title}...')
 
-            Sweep.stress(Sweep(data_path=self.data_path))
+            Sweep.stress(Sweep(data_path=self.data_path),
+                         colorStorage=tuple(c / 255 for c in self.color1),
+                         colorLoss=tuple(c / 255 for c in self.color2))
             plt.show()
 
         if self.title == plottypes[1]:
             print(f'Plotting {self.title}...')
 
-            Sweep.oscilatory(Sweep(data_path=self.data_path))
+            Sweep.oscilatory(Sweep(data_path=self.data_path),
+                             colorStorage=tuple(c / 255 for c in self.color1),
+                             colorLoss=tuple(c / 255 for c in self.color2))
             plt.show()
 
         if self.title == plottypes[2]:
@@ -179,6 +211,24 @@ class PlotDlg(wx.Dialog):
                 plot_fit=self.cb_plotYM.GetValue()
             )
             plt.show()
+
+    def OnColor1(self, evt):
+        dlg = wx.ColourDialog(self)
+        dlg.GetColourData().SetChooseFull(True)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.color1 = dlg.GetColourData().GetColour().Get()
+            print(f'Color 1 selected: {self.color1}')
+        self.colorButton1.SetBackgroundColour(self.color1)
+        dlg.Destroy()
+
+    def OnColor2(self, evt):
+        dlg = wx.ColourDialog(self)
+        dlg.GetColourData().SetChooseFull(True)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.color2 = dlg.GetColourData().GetColour().Get()
+            print(f'Color 2 selected: {self.color2}')
+        self.colorButton2.SetBackgroundColour(self.color2)
+        dlg.Destroy()
 
 
 class DataGui(wx.Frame):

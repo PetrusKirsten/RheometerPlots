@@ -427,7 +427,7 @@ class DynamicCompression:
         self.f_linreg = (0.5 / 10) * self.f_linreg_pct  # (0.5 s)/(10 %) × x%
 
         self.fig.suptitle(f'Dynamic compression - Cycle analysis '
-                          f'({os.path.basename(self.data_path).split("/")[-1]})', alpha=0.9)
+                          f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
 
         if self.stress and self.peak and self.ym:
             self.gs = GridSpec(2, 2, width_ratios=ratios)
@@ -484,7 +484,7 @@ class DynamicCompression:
         self.gs = GridSpec(1, 1)
         ax1 = self.fig.add_subplot(self.gs[:, 0])
         self.fig.suptitle(f'Dynamic compression - Full oscillation '
-                          f'({os.path.basename(self.data_path).split("/")[-1]})', alpha=0.9)
+                          f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
 
         # Left axis configs
         ax1.set_xlim([0, 2 * self.n])
