@@ -47,6 +47,7 @@ def sinusoid(t, a, w, phi, y):
 
 
 class DynamicCompression:
+    # TODO: run the plot even if there are more than 1 file
     # The data must be in .csv where:
     # col 0: 'SegIndex'
     # col 1: 'Fn in N'
@@ -83,7 +84,7 @@ class DynamicCompression:
         self.i_index = 0
         self.f_index = 0
 
-        self.data = pd.read_csv(self.data_path)
+        self.data = pd.read_csv(self.data_path[0])
         self.fig.subplots_adjust(hspace=0)
 
         # Transform the data according to the number of pts from each sequence
@@ -602,7 +603,7 @@ class Sweep:
 
     def stress(
             self,
-            colorStorage='navy', colorLoss='crimson'
+            colorStorage='dodgerblue', colorLoss='hotpink'
     ):
         self.shearStress = self.data['τ in Pa'].to_numpy()
 
@@ -656,7 +657,7 @@ class Sweep:
 
     def oscilatory(
             self,
-            colorStorage='navy', colorLoss='crimson'
+            colorStorage='dodgerblue', colorLoss='hotpink'
     ):
         gPrime = np.array([])
         gDouble = np.array([])
