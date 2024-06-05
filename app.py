@@ -36,8 +36,8 @@ class PlotDlg(wx.Dialog):
 
         self.colorSizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.color1 = 'dodgerblue'
-        self.color2 = 'hotpink'
+        self.color1 = (30, 144, 255, 255)
+        self.color2 = (255, 105, 180, 255)
 
         # Dialog elements
         self.ctrl_size = (50, -1)
@@ -51,10 +51,12 @@ class PlotDlg(wx.Dialog):
         self.colorButton1 = wx.Button(
             self, 1,
             'Color 1', size=(-1, -1))
+        self.colorButton1.SetBackgroundColour(self.color1)
 
         self.colorButton2 = wx.Button(
             self, 2,
             'Color 2', size=(-1, -1))
+        self.colorButton2.SetBackgroundColour(self.color2)
 
         self.plotButton = wx.Button(
             self, 3,
@@ -86,6 +88,8 @@ class PlotDlg(wx.Dialog):
             (self.cb_absoluFit, 0, wx.ALL, 10)
         ))
 
+        self.colorButton1.SetLabel('Stress')
+        self.colorButton2.SetLabel('Height')
         self.init_gui()
 
     def dynamicCyclic(self):
@@ -115,12 +119,18 @@ class PlotDlg(wx.Dialog):
             (self.cb_plotYM, 0, wx.ALL, 10)
         ))
 
+        self.colorButton1.SetLabel('Stress')
+        self.colorButton2.SetLabel('Fitted curve')
         self.init_gui()
 
     def stressSweep(self):
+        self.colorButton1.SetLabel('Storage Modulus')
+        self.colorButton2.SetLabel('Loss Modulus')
         self.init_gui()
 
     def oscilSweep(self):
+        self.colorButton1.SetLabel('Storage Modulus')
+        self.colorButton2.SetLabel('Loss Modulus')
         self.init_gui()
 
     def init_gui(self):
@@ -190,7 +200,9 @@ class PlotDlg(wx.Dialog):
                 normal=self.cb_displacFit.GetValue(),
                 damped=self.cb_dampedFit.GetValue(),
                 absolute=self.cb_absoluFit.GetValue(),
-                plot_exp_h=self.cb_displacExp.GetValue()
+                plot_exp_h=self.cb_displacExp.GetValue(),
+                colorax1=tuple(c / 255 for c in self.color1),
+                colorax2=tuple(c / 255 for c in self.color2)
             )
             plt.show()
 
@@ -208,7 +220,9 @@ class PlotDlg(wx.Dialog):
                 initial_strain=float(self.ctrl_initStrain.GetValue()),
                 final_strain=float(self.ctrl_finStrain.GetValue()),
                 plot_peak=self.cb_plotPeak.GetValue(),
-                plot_fit=self.cb_plotYM.GetValue()
+                plot_fit=self.cb_plotYM.GetValue(),
+                colorSeries=tuple(c / 255 for c in self.color1),
+                colorLinRange=tuple(c / 255 for c in self.color2)
             )
             plt.show()
 

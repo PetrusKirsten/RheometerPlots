@@ -413,7 +413,7 @@ class DynamicCompression:
             ym=True,
             ratios=(3, 2),  # Charts aspect ratio
             plot_time=False, plot_peak=False, plot_fit=False,  # Additional plots
-            color_series='dodgerblue', color_linrange='crimson'  # Colors from series and linear region, respectively
+            colorSeries='dodgerblue', colorLinRange='crimson'  # Colors from series and linear region, respectively
     ):
         self.peak_size = peak_size
 
@@ -432,39 +432,39 @@ class DynamicCompression:
         if self.stress and self.peak and self.ym:
             self.gs = GridSpec(2, 2, width_ratios=ratios)
 
-            self.stress_strain(color_series, color_linrange, plot_time, plot_peak, plot_fit)
-            self.peak_period(color_series)
-            self.ym_period(color_series)
+            self.stress_strain(colorSeries, colorLinRange, plot_time, plot_peak, plot_fit)
+            self.peak_period(colorSeries)
+            self.ym_period(colorSeries)
 
         elif self.peak and self.ym and not self.stress:
             self.gs = GridSpec(2, 1)
 
-            self.peak_period(color_series)
-            self.ym_period(color_series)
+            self.peak_period(colorSeries)
+            self.ym_period(colorSeries)
 
         elif self.stress and self.peak and not self.ym:
             self.gs = GridSpec(1, 2, width_ratios=ratios)
 
-            self.stress_strain(color_series, color_linrange, plot_time, plot_peak, plot_fit)
-            self.peak_period(color_series)
+            self.stress_strain(colorSeries, colorLinRange, plot_time, plot_peak, plot_fit)
+            self.peak_period(colorSeries)
 
         elif self.stress and self.ym and not self.peak:
             self.gs = GridSpec(1, 2, width_ratios=ratios)
 
-            self.stress_strain(color_series, color_linrange, plot_time, plot_peak, plot_fit)
-            self.ym_period(color_series)
+            self.stress_strain(colorSeries, colorLinRange, plot_time, plot_peak, plot_fit)
+            self.ym_period(colorSeries)
 
         else:
             self.gs = GridSpec(1, 1)
 
             if self.stress and not self.ym and not self.peak:
-                self.stress_strain(color_series, color_linrange, plot_time, plot_peak, plot_fit)
+                self.stress_strain(colorSeries, colorLinRange, plot_time, plot_peak, plot_fit)
 
             if not self.stress and self.peak and not self.ym:
-                self.peak_period(color_series)
+                self.peak_period(colorSeries)
 
             if not self.stress and not self.peak and self.ym:
-                self.ym_period(color_series)
+                self.ym_period(colorSeries)
 
         return self.fig
 
@@ -605,6 +605,7 @@ class Sweep:
             self,
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
+        self.getData()
         self.shearStress = self.data['τ in Pa'].to_numpy()
 
         # Plots configs
@@ -659,31 +660,8 @@ class Sweep:
             self,
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
-        gPrime = np.array([])
-        gDouble = np.array([])
 
-        for file in range(len(self.data_path)):
-            self.data = pd.read_csv(self.data_path[file])
-
-            self.timeTotal = self.data['t in s'].to_numpy()
-            self.timeElement = self.data['t_seg in s'].to_numpy()
-            self.strainStress = self.data['ɣ in %'].to_numpy()
-            self.compViscosity = self.data['|η*| in mPas'].to_numpy()
-            self.temperature = self.data['T in °C'].to_numpy()
-
-            self.frequency = self.data['f in Hz'].to_numpy()
-            self.angVeloc = 2 * np.pi * self.frequency
-
-            gPrime = np.append(gPrime, self.data["G' in Pa"].to_numpy())
-            gDouble = np.append(gDouble, self.data['G" in Pa'].to_numpy())
-
-        gPrime = gPrime.reshape(len(self.data_path), int(len(gPrime) / len(self.data_path)))
-        gDouble = gDouble.reshape(len(self.data_path), int(len(gDouble) / len(self.data_path)))
-
-        self.storageModulus = gPrime.mean(axis=0)
-        self.storageModulusErr = gPrime.std(axis=0)
-        self.lossModulus = gDouble.mean(axis=0)
-        self.lossModulusErr = gDouble.std(axis=0)
+        self.getData()
 
         # Plots configs
         plt.style.use('seaborn-v0_8-ticks')
@@ -734,6 +712,40 @@ class Sweep:
             capsize=3, capthick=1, elinewidth=1, ecolor=colorLoss)
 
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+    def getData(
+            self
+    ):
+        gPrime, gDouble = np.array([]), np.array([])
+        # gPrime = np.array([])
+        # gDouble = np.array([])
+
+        for file in range(len(self.data_path)):
+            self.data = pd.read_csv(self.data_path[file])
+
+            self.timeTotal = self.data['t in s'].to_numpy()
+            self.timeElement = self.data['t_seg in s'].to_numpy()
+            self.strainStress = self.data['ɣ in %'].to_numpy()
+            self.compViscosity = self.data['|η*| in mPas'].to_numpy()
+            self.temperature = self.data['T in °C'].to_numpy()
+
+            self.shearStress = self.data['τ in Pa'].to_numpy()
+            
+            self.frequency = self.data['f in Hz'].to_numpy()
+            self.angVeloc = 2 * np.pi * self.frequency
+
+            gPrime = np.append(gPrime, self.data["G' in Pa"].to_numpy())
+            gDouble = np.append(gDouble, self.data['G" in Pa'].to_numpy())
+
+        gPrime = gPrime.reshape(len(self.data_path), int(len(gPrime) / len(self.data_path)))
+        gDouble = gDouble.reshape(len(self.data_path), int(len(gDouble) / len(self.data_path)))
+
+        self.storageModulus = gPrime.mean(axis=0)
+        self.storageModulusErr = gPrime.std(axis=0)
+        self.lossModulus = gDouble.mean(axis=0)
+        self.lossModulusErr = gDouble.std(axis=0)
+
+        return
 
 
 # Global configs
