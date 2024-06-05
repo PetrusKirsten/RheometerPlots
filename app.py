@@ -8,7 +8,7 @@ from rheoplots.plotting import Sweep
 
 plottypes = [
     'Amplitude sweeps | Stress sweep',
-    'Oscillatory sweeps',
+    'Oscillatory | Frequency sweep',
     'Dynamic compression | Full',
     'Dynamic compression | Cyclic'
 ]
@@ -291,7 +291,7 @@ class DataGui(wx.Frame):
 
         dlg.Destroy()
         self.combo_plot.Enable(True)
-        print(f'File selected: {self.data_path}')
+        print(f'File(s) selected: {self.filename}')
 
     def OnCombo(self, e):
         plottype_choice = self.combo_plot.GetValue()

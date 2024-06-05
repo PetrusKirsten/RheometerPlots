@@ -722,13 +722,15 @@ class Sweep:
         # ax1.xaxis.set_major_locator(MultipleLocator(20))
 
         # Experimental data
-        ax1.scatter(
-            self.angVeloc, self.storageModulus,
-            color=colorStorage, alpha=0.5, s=45, marker='o', edgecolors='k')
+        ax1.errorbar(
+            self.angVeloc, self.storageModulus, yerr=self.storageModulusErr, alpha=0.75,
+            fmt='o', markersize=8, color=colorStorage, markeredgecolor=colorStorage, markeredgewidth=1,
+            capsize=3, capthick=1, elinewidth=1, ecolor=colorStorage)
 
-        ax2.scatter(
-            self.angVeloc, self.lossModulus,
-            color=colorLoss, alpha=0.5, s=45, marker='o', edgecolors='k')
+        ax2.errorbar(
+            self.angVeloc, self.lossModulus, yerr=self.lossModulusErr, alpha=0.75,
+            fmt='o', markersize=8, color=colorLoss, markeredgecolor=colorLoss, markeredgewidth=1,
+            capsize=3, capthick=1, elinewidth=1, ecolor=colorLoss)
 
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
