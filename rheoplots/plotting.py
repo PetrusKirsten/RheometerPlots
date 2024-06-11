@@ -47,7 +47,6 @@ def sinusoid(t, a, w, phi, y):
 
 
 class DynamicCompression:
-    # TODO: run the plot even if there are more than 1 file
     # The data must be in .csv where:
     # col 0: 'SegIndex'
     # col 1: 'Fn in N'
@@ -601,17 +600,14 @@ class Sweep:
         self.frequency = None
         self.angVeloc = None
 
-    def stress(
+    def configPlot(
             self,
+            mode,
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
-        self.getData('Shear Stress')
-
         # Plots configs
         plt.style.use('seaborn-v0_8-ticks')
         ax1 = self.fig.add_subplot(self.gs[:, 0])
-        self.fig.suptitle(f'Stress sweeps '
-                          f'({os.path.basename(self.data_path).split("/")[-1]})', alpha=0.9)
 
         # Right axis configs
         ax2 = ax1.twinx()
@@ -625,33 +621,47 @@ class Sweep:
         ax2.tick_params(axis='y', which='minor', labelcolor=colorLoss, colors=colorLoss, labelsize=8)
         ax2.spines['right'].set_color(colorLoss)
         ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-        ax2.set_xlim([1, round(self.shearStress[-1], -1)])
+        ax2.set_xlim([self.shearStress[0], round(self.shearStress[-1], -1)])
 
         # Left axis configs
         ax1.set_yscale('log')
         ax1.set_xscale('log')
         ax1.set_ylabel("Storage modulus G' (Pa)", color=colorStorage)
-        ax1.set_ylim(
-            [int(round(np.min(self.storageModulus) - np.min(self.storageModulus) * 0.8, -3)),
-             int(round(np.max(self.storageModulus) + np.max(self.storageModulus) * 0.2, -4))])
+        # ax1.set_ylim(
+        #     [int(round(np.min(self.storageModulus) - np.min(self.storageModulus) * 0.8, -3)),
+        #      int(round(np.max(self.storageModulus) + np.max(self.storageModulus) * 0.4, -4))])
         ax1.tick_params(axis='y', which='major', labelcolor=colorStorage, colors=colorStorage)
         ax1.tick_params(axis='y', which='minor', labelcolor=colorStorage, colors=colorStorage, labelsize=8)
         ax2.spines['left'].set_color(colorStorage)
         ax1.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-        ax1.set_xlim([1, round(self.shearStress[-1], -1)])
+        ax1.set_xlim([self.shearStress[0], round(self.shearStress[-1], -1)])
 
-        ax1.set_xlabel('Shear stress (Pa)')
-        ax1.xaxis.set_minor_locator(MultipleLocator(10))
-        ax1.xaxis.set_major_locator(MultipleLocator(20))
+        if mode == 'Freq':
+            self.fig.suptitle(f'Frequency sweeps '
+                              f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
+            ax1.set_xlabel('Angular velocity (rad/s)')
 
-        # Experimental data
+        if mode == 'Shear Stress':
+            self.fig.suptitle(f'Stress sweeps '
+                              f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
+            ax1.set_xlabel('Shear stress (Pa)')
+
+        return ax1, ax2
+
+    def stress(
+            self,
+            colorStorage='dodgerblue', colorLoss='hotpink'
+    ):
+        self.getData('Shear Stress')
+        ax1, ax2 = self.configPlot('Shear Stress')
+
         ax1.scatter(
             self.shearStress, self.storageModulus,
-            color=colorStorage, alpha=0.5, s=45, marker='o', edgecolors='k')
+            color=colorStorage, alpha=0.75, s=45, marker='o', edgecolors='k')
 
         ax2.scatter(
             self.shearStress, self.lossModulus,
-            color=colorLoss, alpha=0.5, s=45, marker='o', edgecolors='k')
+            color=colorLoss, alpha=0.75, s=45, marker='o', edgecolors='k')
 
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
@@ -659,55 +669,19 @@ class Sweep:
             self,
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
-
         self.getData('Freq')
+        ax1, ax2 = self.configPlot('Freq')
 
-        # Plots configs
-        plt.style.use('seaborn-v0_8-ticks')
-        ax1 = self.fig.add_subplot(self.gs[:, 0])
-        self.fig.suptitle(f'Frequency sweeps '
-                          f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
-
-        # Right axis configs
-        ax2 = ax1.twinx()
-        ax2.set_yscale('log')
-        ax2.set_xscale('log')
-        ax2.set_ylabel('Loss modulus G" (Pa)', color=colorLoss)
-        ax2.set_ylim(
-            [int(round(np.min(self.lossModulus) - np.min(self.lossModulus) * 0.7, -2)),
-             int(round(np.max(self.lossModulus) + np.max(self.lossModulus) * 2.7, -3))])
-        ax2.tick_params(axis='y', which='major', labelcolor=colorLoss, colors=colorLoss)
-        ax2.tick_params(axis='y', which='minor', labelcolor=colorLoss, colors=colorLoss, labelsize=8)
-        ax2.spines['right'].set_color(colorLoss)
-        ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-        ax2.set_xlim([1, round(self.angVeloc[-1], -1)])
-
-        # Left axis configs
-        ax1.set_yscale('log')
-        ax1.set_xscale('log')
-        ax1.set_ylabel("Storage modulus G' (Pa)", color=colorStorage)
-        ax1.set_ylim(
-            [int(round(np.min(self.storageModulus) - np.min(self.storageModulus) * 0.8, -3)),
-             int(round(np.max(self.storageModulus) + np.max(self.storageModulus) * 0.2, -4))])
-        ax1.tick_params(axis='y', which='major', labelcolor=colorStorage, colors=colorStorage)
-        ax1.tick_params(axis='y', which='minor', labelcolor=colorStorage, colors=colorStorage, labelsize=8)
-        ax2.spines['left'].set_color(colorStorage)
-        ax1.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-        ax1.set_xlim([1, round(self.angVeloc[-1], -1)])
-
-        ax1.set_xlabel('Angular velocity (rad/s)')
-        # ax1.xaxis.set_minor_locator(MultipleLocator(10))
-        # ax1.xaxis.set_major_locator(MultipleLocator(20))
-
-        # Experimental data
         ax1.errorbar(
-            self.angVeloc, self.storageModulus, yerr=self.storageModulusErr, alpha=0.75,
-            fmt='o', markersize=7, color=colorStorage, markeredgecolor=colorStorage, markeredgewidth=1,
+            self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
+            color=colorStorage, alpha=0.75, markersize=7, fmt='o',
+            markeredgecolor=colorStorage, markeredgewidth=1,
             capsize=3, capthick=1, elinewidth=1, ecolor=colorStorage)
 
         ax2.errorbar(
-            self.angVeloc, self.lossModulus, yerr=self.lossModulusErr, alpha=0.75,
-            fmt='o', markersize=7, color=colorLoss, markeredgecolor=colorLoss, markeredgewidth=1,
+            self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
+            color=colorLoss, alpha=0.75, markersize=7, fmt='o',
+            markeredgecolor=colorLoss, markeredgewidth=1,
             capsize=3, capthick=1, elinewidth=1, ecolor=colorLoss)
 
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
