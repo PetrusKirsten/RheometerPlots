@@ -47,6 +47,7 @@ def sinusoid(t, a, w, phi, y):
 
 
 class DynamicCompression:
+    # TODO: fix data reading
     # The data must be in .csv where:
     # col 0: 'SegIndex'
     # col 1: 'Fn in N'
@@ -470,7 +471,7 @@ class DynamicCompression:
     def total_plot(
             self,
             normal=False, damped=False, absolute=False,  # Fitting plots
-            plot_exp_h=True, plot_time=False,  # Additional plots
+            plot_exp_h=True, plot_time=True,  # Additional plots
             colorax1='dodgerblue', colorax2='silver'  # Colors from stress and height, respectively
     ):
         self.plot_exp_h = plot_exp_h
@@ -494,7 +495,7 @@ class DynamicCompression:
             ax1.set_xticks(np.arange(0, 2 * self.n + 0.5, 0.5))
             ax1.set_xticklabels(np.append(np.array(['0%', '10%', '20%', '-10%'] * self.n), ['0%']))
         ax1.set_ylabel('Stress (kPa)')
-        ax1.yaxis.set_major_locator(MultipleLocator(0.50))
+        # ax1.yaxis.set_major_locator(MultipleLocator(0.50))
         ax1.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
         # ax1.yaxis.set_minor_locator(MultipleLocator(0.25))
 
