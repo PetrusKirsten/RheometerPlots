@@ -605,8 +605,7 @@ class Sweep:
             self,
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
-        self.getData()
-        self.shearStress = self.data['τ in Pa'].to_numpy()
+        self.getData('Shear Stress')
 
         # Plots configs
         plt.style.use('seaborn-v0_8-ticks')
@@ -661,7 +660,7 @@ class Sweep:
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
 
-        self.getData()
+        self.getData('Freq')
 
         # Plots configs
         plt.style.use('seaborn-v0_8-ticks')
@@ -703,22 +702,20 @@ class Sweep:
         # Experimental data
         ax1.errorbar(
             self.angVeloc, self.storageModulus, yerr=self.storageModulusErr, alpha=0.75,
-            fmt='o', markersize=8, color=colorStorage, markeredgecolor=colorStorage, markeredgewidth=1,
+            fmt='o', markersize=7, color=colorStorage, markeredgecolor=colorStorage, markeredgewidth=1,
             capsize=3, capthick=1, elinewidth=1, ecolor=colorStorage)
 
         ax2.errorbar(
             self.angVeloc, self.lossModulus, yerr=self.lossModulusErr, alpha=0.75,
-            fmt='o', markersize=8, color=colorLoss, markeredgecolor=colorLoss, markeredgewidth=1,
+            fmt='o', markersize=7, color=colorLoss, markeredgecolor=colorLoss, markeredgewidth=1,
             capsize=3, capthick=1, elinewidth=1, ecolor=colorLoss)
 
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
     def getData(
-            self
+            self, xAxis=str
     ):
         gPrime, gDouble = np.array([]), np.array([])
-        # gPrime = np.array([])
-        # gDouble = np.array([])
 
         for file in range(len(self.data_path)):
             self.data = pd.read_csv(self.data_path[file])
@@ -729,16 +726,19 @@ class Sweep:
             self.compViscosity = self.data['|η*| in mPas'].to_numpy()
             self.temperature = self.data['T in °C'].to_numpy()
 
-            self.shearStress = self.data['τ in Pa'].to_numpy()
-            
-            self.frequency = self.data['f in Hz'].to_numpy()
-            self.angVeloc = 2 * np.pi * self.frequency
+            if xAxis == 'Shear Stress':
+                self.shearStress = self.data['τ in Pa'].to_numpy()
+            if xAxis == 'Freq':
+                self.frequency = self.data['f in Hz'].to_numpy()
+                self.angVeloc = 2 * np.pi * self.frequency
 
             gPrime = np.append(gPrime, self.data["G' in Pa"].to_numpy())
             gDouble = np.append(gDouble, self.data['G" in Pa'].to_numpy())
 
-        gPrime = gPrime.reshape(len(self.data_path), int(len(gPrime) / len(self.data_path)))
-        gDouble = gDouble.reshape(len(self.data_path), int(len(gDouble) / len(self.data_path)))
+        gPrime = gPrime.reshape(
+            len(self.data_path), int(len(gPrime) / len(self.data_path)))
+        gDouble = gDouble.reshape(
+            len(self.data_path), int(len(gDouble) / len(self.data_path)))
 
         self.storageModulus = gPrime.mean(axis=0)
         self.storageModulusErr = gPrime.std(axis=0)
