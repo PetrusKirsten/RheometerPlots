@@ -44,8 +44,8 @@ class PlotDlg(wx.Dialog):
         # Dialog elements
         self.ctrl_size = (50, -1)
 
-        self.txt_npoints = wx.StaticText(self, -1, 'Number of points:')
-        self.ctrl_npoints = wx.TextCtrl(self, -1, '196', size=self.ctrl_size)
+        self.txt_nCycles = wx.StaticText(self, -1, 'Number of cycles/periods:')
+        self.ctrl_nCycles = wx.TextCtrl(self, -1, '3', size=self.ctrl_size)
 
         self.txt_dpi = wx.StaticText(self, -1, 'Figure resolution (dpi):')
         self.ctrl_dpi = wx.TextCtrl(self, -1, '300', size=self.ctrl_size)
@@ -137,8 +137,8 @@ class PlotDlg(wx.Dialog):
 
     def init_gui(self):
         self.txt_sizer.AddMany((
-            (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
-            (self.ctrl_npoints, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.txt_nCycles, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.ctrl_nCycles, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
             (self.txt_dpi, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
             (self.ctrl_dpi, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
         ))
@@ -194,7 +194,7 @@ class PlotDlg(wx.Dialog):
 
             data = DynamicCompression(
                 data_path=self.data_path,
-                points=int(self.ctrl_npoints.GetValue()),
+                cycles=int(self.ctrl_nCycles.GetValue()),
                 figure_size=(34, 14)
             )
             DynamicCompression.total_plot(
@@ -213,7 +213,7 @@ class PlotDlg(wx.Dialog):
 
             data = DynamicCompression(
                 data_path=self.data_path,
-                points=int(self.ctrl_npoints.GetValue()),
+                cycles=int(self.ctrl_nCycles.GetValue()),
                 figure_size=(34, 14)
             )
             DynamicCompression.cyclic_plot(
