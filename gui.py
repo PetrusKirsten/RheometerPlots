@@ -175,7 +175,6 @@ class PlotDlg(wx.Dialog):
     def OnPlot(self, e):
         if self.title == plottypes[0]:
             print(f'Plotting {self.title}...')
-
             Sweep.stress(Sweep(data_path=self.data_path),
                          colorStorage=tuple(c / 255 for c in self.color1),
                          colorLoss=tuple(c / 255 for c in self.color2))
@@ -183,7 +182,6 @@ class PlotDlg(wx.Dialog):
 
         if self.title == plottypes[1]:
             print(f'Plotting {self.title}...')
-
             Sweep.oscilatory(Sweep(data_path=self.data_path),
                              colorStorage=tuple(c / 255 for c in self.color1),
                              colorLoss=tuple(c / 255 for c in self.color2))
@@ -191,10 +189,10 @@ class PlotDlg(wx.Dialog):
 
         if self.title == plottypes[2]:
             print(f'Plotting {self.title}...')
-
             data = DynamicCompression(
                 data_path=self.data_path,
                 cycles=int(self.ctrl_nCycles.GetValue()),
+                mode='Total',
                 figure_size=(34, 14)
             )
             DynamicCompression.total_plot(
@@ -214,6 +212,7 @@ class PlotDlg(wx.Dialog):
             data = DynamicCompression(
                 data_path=self.data_path,
                 cycles=int(self.ctrl_nCycles.GetValue()),
+                mode='Cyclic',
                 figure_size=(34, 14)
             )
             DynamicCompression.cyclic_plot(
