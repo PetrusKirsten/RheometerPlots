@@ -56,11 +56,11 @@ class DynamicCompression:
     ):
         self.data_path = data_path
         self.nCycles = cycles
-        self.figure_size = figure_size
+        self.figSize = figure_size
 
         # Figure vars
         self.gs = None
-        self.fig = plt.figure(figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm))
+        self.fig = plt.figure(figsize=(self.figSize[0] * cm, self.figSize[1] * cm))
         self.fig.subplots_adjust(hspace=0)
         # Plot vars
         self.area = np.pi * 0.015 ** 2  # 30 mm diamater circle => r = 0.015 m => S = 0.0007 m²
@@ -77,72 +77,44 @@ class DynamicCompression:
         self.data = pd.read_csv(self.data_path[0])
         self.timeData, self.heightData, self.forceData, self.stressData = self.getData(mode)
 
-    def cyclic_plot(
-            self,
-            peak_size=3,
-            initial_strain=10,
-            final_strain=18,
-            stress=True,
-            peak=True,
-            ym=True,
-            ratios=(3, 2),  # Charts aspect ratio
-            plot_time=False, plot_peak=False, plot_fit=False,  # Additional plots
-            colorSeries='dodgerblue', colorLinRange='crimson'  # Colors from series and linear region, respectively
+    def getData(
+            self, mode
     ):
-        self.peakSize = peak_size
+        t_seg = self.data['t_seg in s'].to_numpy()
 
-        self.plotStress = stress
-        self.plotPeak = peak
-        self.plotYoung = ym
+        tempTime = np.array([])
+        t_segShaped = t_seg.reshape(2 * self.nCycles, len(t_seg) // (2 * self.nCycles))
 
-        self.i_linreg_pct = initial_strain  # Initial strain value for linear region
-        self.f_linreg_pct = final_strain  # Final strain value for linear region
-        self.i_linreg = (0.5 / 10) * self.i_linreg_pct  # Convert the strain values to time values
-        self.f_linreg = (0.5 / 10) * self.f_linreg_pct  # (0.5 s)/(10 %) × x%
+        for c in np.arange(0, t_segShaped.shape[0], 2):
+            tempTime = np.append(
+                tempTime,
+                np.append(t_segShaped[c], t_segShaped[c + 1] + t_segShaped[c][-1]))
+        tempTime = tempTime.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
 
-        self.fig.suptitle(f'Dynamic compression - Cycle analysis '
-                          f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
+        tempTotalTime = np.array([])
+        for c in np.arange(1, tempTime.shape[0], 1):
+            if c > 1:
+                tempTotalTime = np.append(
+                    tempTotalTime, tempTime[c] + tempTotalTime[-1])
+            else:
+                tempTotalTime = np.append(
+                    tempTime[0], tempTime[c] + tempTime[0][-1])
 
-        if self.plotStress and self.plotPeak and self.plotYoung:
-            self.gs = GridSpec(2, 2, width_ratios=ratios)
+        height = self.data['h in mm'].to_numpy()
+        force = self.data['Fn in N'].to_numpy()
+        stress = (force / self.area) * 0.001  # N/m² => Pa / 1000 == 1 kPa
 
-            self.stress_strain(colorSeries, colorLinRange, plot_time, plot_peak, plot_fit)
-            self.peak_period(colorSeries)
-            self.ym_period(colorSeries)
+        if mode == 'Total':
+            return tempTotalTime, height, force, stress
 
-        elif self.plotPeak and self.plotYoung and not self.plotStress:
-            self.gs = GridSpec(2, 1)
+        if mode == 'Cyclic':
+            height = height.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
+            force = force.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
+            stress = stress.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
 
-            self.peak_period(colorSeries)
-            self.ym_period(colorSeries)
+            return tempTime, height, force, stress
 
-        elif self.plotStress and self.plotPeak and not self.plotYoung:
-            self.gs = GridSpec(1, 2, width_ratios=ratios)
-
-            self.stress_strain(colorSeries, colorLinRange, plot_time, plot_peak, plot_fit)
-            self.peak_period(colorSeries)
-
-        elif self.plotStress and self.plotYoung and not self.plotPeak:
-            self.gs = GridSpec(1, 2, width_ratios=ratios)
-
-            self.stress_strain(colorSeries, colorLinRange, plot_time, plot_peak, plot_fit)
-            self.ym_period(colorSeries)
-
-        else:
-            self.gs = GridSpec(1, 1)
-
-            if self.plotStress and not self.plotYoung and not self.plotPeak:
-                self.stress_strain(colorSeries, colorLinRange, plot_time, plot_peak, plot_fit)
-
-            if not self.plotStress and self.plotPeak and not self.plotYoung:
-                self.peak_period(colorSeries)
-
-            if not self.plotStress and not self.plotPeak and self.plotYoung:
-                self.ym_period(colorSeries)
-
-        return self.fig
-
-    def total_plot(
+    def plotTotal(
             self,
             normal=False, damped=False, absolute=False,  # Fitting plots
             plot_exp_h=True,  # Additional plot
@@ -150,9 +122,9 @@ class DynamicCompression:
     ):
         self.plotExpHeight = plot_exp_h
 
-        popt_sin, _ = self.sinusoid_fit('normal')
-        popt_dpd, _ = self.sinusoid_fit('damped')
-        popt_abs, _ = self.sinusoid_fit('absolute')
+        popt_sin, _ = self.fitSinusoid('normal')
+        popt_dpd, _ = self.fitSinusoid('damped')
+        popt_abs, _ = self.fitSinusoid('absolute')
 
         # Plots configs
         self.gs = GridSpec(1, 1)
@@ -241,63 +213,72 @@ class DynamicCompression:
 
         return self.fig
 
-    def linear_fit(
+    def plotCyclic(
             self,
-            slope_array,
-            stdev_array,
-            interactor
+            peak_size=3,
+            initial_strain=10,
+            final_strain=18,
+            stress=True,
+            peak=True,
+            ym=True,
+            ratios=(3, 2),  # Charts aspect ratio
+            plotTime=False, plotPeak=False, plotFit=False,  # Additional plots
+            colorSeries='dodgerblue', colorLinRange='crimson'  # Colors from series and linear region, respectively
     ):
-        # Convert time value to index
-        self.i_index = np.where(self.timeData[interactor, :] < self.i_linreg)[-1][-1]
-        self.f_index = np.where(self.timeData[interactor, :] < self.f_linreg)[-1][-1]
-        optimal, covariance = curve_fit(
-            linear_reg,
-            self.timeData[interactor, self.i_index:self.f_index],
-            self.stressData[interactor, self.i_index:self.f_index],
-            p0=(2, 0)
-        )
-        error = np.sqrt(np.diag(covariance))
+        self.peakSize = peak_size
 
-        slope_array = np.append(slope_array, optimal[0])
-        stdev_array = np.append(stdev_array, error[0])
+        self.plotStress = stress
+        self.plotPeak = peak
+        self.plotYoung = ym
 
-        return slope_array, stdev_array, optimal
+        self.i_linreg_pct = initial_strain  # Initial strain value for linear region
+        self.f_linreg_pct = final_strain  # Final strain value for linear region
+        self.i_linreg = (0.5 / 10) * self.i_linreg_pct  # Convert the strain values to time values
+        self.f_linreg = (0.5 / 10) * self.f_linreg_pct  # (0.5 s)/(10 %) × x%
 
-    def sinusoid_fit(
-            self,
-            mode=str,
-    ):
-        if mode == 'normal':
-            optimal_sin, covariance_sin = curve_fit(
-                sinusoid,
-                self.timeData,
-                self.heightData,
-                p0=(1.25, 2.9, 1.75, 1.2)
-            )
-            return optimal_sin, covariance_sin
+        self.fig.suptitle(f'Dynamic compression - Cycle analysis '
+                          f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
 
-        elif mode == 'damped':
-            optimal_damped, covariance_damped = curve_fit(
-                damped_sinusoid,
-                self.timeData[45:],
-                self.stressData[45:],
-                p0=(1.5, 0.01, 2.9, 1.75, 1.2)
-            )
-            return optimal_damped, covariance_damped
+        if self.plotStress and self.plotPeak and self.plotYoung:
+            self.gs = GridSpec(2, 2, width_ratios=ratios)
 
-        elif mode == 'absolute':
-            optimal_abs, covariance_abs = curve_fit(
-                abs_damped_sinusoid,
-                self.timeData[45:],
-                self.stressData[45:],
-                p0=(3, 0.01, 1.75, 1.75)
-            )
-            return optimal_abs, covariance_abs
+            self.cyclicStress(colorSeries, colorLinRange, plotTime, plotPeak, plotFit)
+            self.cyclicPeak(colorSeries)
+            self.cyclicYoung(colorSeries)
+
+        elif self.plotPeak and self.plotYoung and not self.plotStress:
+            self.gs = GridSpec(2, 1)
+
+            self.cyclicPeak(colorSeries)
+            self.cyclicYoung(colorSeries)
+
+        elif self.plotStress and self.plotPeak and not self.plotYoung:
+            self.gs = GridSpec(1, 2, width_ratios=ratios)
+
+            self.cyclicStress(colorSeries, colorLinRange, plotTime, plotPeak, plotFit)
+            self.cyclicPeak(colorSeries)
+
+        elif self.plotStress and self.plotYoung and not self.plotPeak:
+            self.gs = GridSpec(1, 2, width_ratios=ratios)
+
+            self.cyclicStress(colorSeries, colorLinRange, plotTime, plotPeak, plotFit)
+            self.cyclicYoung(colorSeries)
 
         else:
-            return 'No fitting functions were selected.'
+            self.gs = GridSpec(1, 1)
 
-    def stress_peak(
+            if self.plotStress and not self.plotYoung and not self.plotPeak:
+                self.cyclicStress(colorSeries, colorLinRange, plotTime, plotPeak, plotFit)
+
+            if not self.plotStress and self.plotPeak and not self.plotYoung:
+                self.cyclicPeak(colorSeries)
+
+            if not self.plotStress and not self.plotPeak and self.plotYoung:
+                self.cyclicYoung(colorSeries)
+
+        return self.fig
+
+    def get_stressPeak(
             self,
             size
     ):  # Get the max stress values from a range and store the means and std dev
@@ -318,15 +299,15 @@ class DynamicCompression:
 
         return x, mean, std, peak
 
-    def stress_strain(
+    def cyclicStress(
             self,
-            color_series, color_linrange,  # Colors config
-            plot_time=bool, plot_peak=bool, plot_fit=bool  # Additional plots
+            colorSeries, colorFit,  # Colors config
+            plotTime=bool, plotPeak=bool, plotFit=bool  # Additional plots
     ):
         ax = self.fig.add_subplot(self.gs[:, 0])
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(1)
 
-        if plot_time:  # If True, it shows the Stress X Time plot
+        if plotTime:  # If True, it shows the Stress X Time plot
             ax.set_xlabel('Oscillation time (s)')
         else:
             ax.set_xlabel('Strain')
@@ -341,15 +322,15 @@ class DynamicCompression:
         ax.set_ylim([-0.25, self.stressData.max() + self.stressData.max() * 0.15])
 
         # Plot the linear range and its values
-        ax.axvspan(self.i_linreg, self.f_linreg, alpha=0.07, color=color_linrange)
+        ax.axvspan(self.i_linreg, self.f_linreg, alpha=0.07, color=colorFit)
         ax.text(self.i_linreg + 0.02, self.stressData.max() + self.stressData.max() * 0.1,
-                f'Linear region', color=color_linrange, weight='bold')
-        ax.text(self.i_linreg - 0.165, -0.1, f'{self.i_linreg_pct:.1f}%', color=color_linrange)
-        ax.text(self.f_linreg + 0.020, -0.1, f'{self.f_linreg_pct:.1f}%', color=color_linrange)
+                f'Linear region', color=colorFit, weight='bold')
+        ax.text(self.i_linreg - 0.165, -0.1, f'{self.i_linreg_pct:.1f}%', color=colorFit)
+        ax.text(self.f_linreg + 0.020, -0.1, f'{self.f_linreg_pct:.1f}%', color=colorFit)
 
         # Plot the peak range
-        x_peak, peak_mean, peak_std, peak_val = self.stress_peak(self.peakSize)
-        if plot_peak:
+        x_peak, peak_mean, peak_std, peak_val = self.get_stressPeak(self.peakSize)
+        if plotPeak:
             ax.axvspan(x_peak[-1][0], x_peak[-1][-1], alpha=0.2, color='mediumpurple')
             ax.text(x_peak[-1][-1] + 0.03, self.stressData.max() + self.stressData.max() * 0.1,
                     f'Peak region', color='mediumpurple', weight='bold')
@@ -359,29 +340,29 @@ class DynamicCompression:
             # Plot experimental data
             ax.scatter(
                 np.append(self.timeData[i, :self.timeData.shape[1] // 2], self.timeData[i, self.timeData.shape[1] // 2:]), self.stressData[i, :],
-                label=f'#{i + 1} period', color=color_series, edgecolors='none', s=30, alpha=(0.8 - 0.25 * i))
+                label=f'#{i + 1} period', color=colorSeries, edgecolors='none', s=30, alpha=(0.8 - 0.25 * i))
 
             # If plot_peak is True, plot peak data
-            if plot_peak:
+            if plotPeak:
                 ax.scatter(
                     x_peak[i, :], peak_val[i, :],
-                    color=color_series, edgecolors='indigo', linewidths=0.75, s=30, alpha=0.70)
+                    color=colorSeries, edgecolors='indigo', linewidths=0.75, s=30, alpha=0.70)
 
             # If plot_fit is True, plot fitted curve
-            self.slope_val, self.slope_std, popt = self.linear_fit(self.slope_val, self.slope_std, i)
-            if plot_fit:
+            self.slope_val, self.slope_std, popt = self.fitLinear(self.slope_val, self.slope_std, i)
+            if plotFit:
                 ax.plot(
                     self.timeData[i, self.i_index + 1:self.f_index + 1],
                     linear_reg(self.timeData[i, self.i_index + 1:self.f_index + 1], popt[0], popt[1]),
-                    color=color_linrange, alpha=(0.75 - 0.12 * i), lw=1.3)
+                    color=colorFit, alpha=(0.75 - 0.12 * i), lw=1.3)
                 ax.scatter(
                     [self.timeData[i, self.i_index + 1], self.timeData[i, self.f_index + 1]],
                     [self.stressData[i, self.i_index + 1], self.stressData[i, self.f_index + 1]],
-                    color=color_series, edgecolors=color_linrange, linewidths=0.75, s=30, alpha=1)
+                    color=colorSeries, edgecolors=colorFit, linewidths=0.75, s=30, alpha=1)
 
         ax.legend(frameon=False)
 
-    def peak_period(
+    def cyclicPeak(
             self,
             color_series
     ):
@@ -390,19 +371,19 @@ class DynamicCompression:
         # elif not self.stress:
         #     ax = self.fig.add_subplot(self.gs[0])
 
-        if self.stressData and not self.plotYoung:
+        if self.plotStress and not self.plotYoung:
             ax = self.fig.add_subplot(self.gs[0, 1])
 
-        elif not self.stressData and not self.plotYoung:
+        elif not self.plotStress and not self.plotYoung:
             ax = self.fig.add_subplot(self.gs[0])
 
-        elif not self.stressData and self.plotYoung:
+        elif not self.plotStress and self.plotYoung:
             ax = self.fig.add_subplot(self.gs[1])
 
         else:
             ax = self.fig.add_subplot(self.gs[0, 1])
 
-        x_peak, peak_mean, peak_std, peak_val = self.stress_peak(self.peakSize)
+        x_peak, peak_mean, peak_std, peak_val = self.get_stressPeak(self.peakSize)
 
         period_array = np.arange(1, self.nCycles + 1, 1)
 
@@ -438,17 +419,17 @@ class DynamicCompression:
         ax.text(period_array[0] - 0.6, peak_mean.min() - peak_mean.min() * 0.045,
                 f'{diff_s} in: {abs(diff):.1f}%', color='#383838')
 
-    def ym_period(
+    def cyclicYoung(
             self,
             color_series
     ):
-        if self.stressData and not self.plotPeak:
+        if self.plotStress and not self.plotPeak:
             ax = self.fig.add_subplot(self.gs[0, 1])
 
-        elif not self.stressData and not self.plotPeak:
+        elif not self.plotStress and not self.plotPeak:
             ax = self.fig.add_subplot(self.gs[0])
 
-        elif not self.stressData and self.plotPeak:
+        elif not self.plotStress and self.plotPeak:
             ax = self.fig.add_subplot(self.gs[1])
 
         else:
@@ -457,7 +438,7 @@ class DynamicCompression:
         period_array = np.arange(1, self.nCycles + 1, 1)
 
         for i in period_array - 1:
-            self.slope_val, self.slope_std, popt = self.linear_fit(self.slope_val, self.slope_std, i)
+            self.slope_val, self.slope_std, popt = self.fitLinear(self.slope_val, self.slope_std, i)
 
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(1)
         ax.set_xlabel('Period')
@@ -491,6 +472,62 @@ class DynamicCompression:
         ax.text(period_array[0] - 0.6, self.slope_val.min() - self.slope_val.min() * 0.025,
                 f'{diff_s} in: {abs(diff):.1f}%', color='#383838')
 
+    def fitLinear(
+            self,
+            slope,
+            stdev,
+            interactor
+    ):
+        # Convert time value to index
+        self.i_index = np.where(self.timeData[interactor, :] < self.i_linreg)[-1][-1]
+        self.f_index = np.where(self.timeData[interactor, :] < self.f_linreg)[-1][-1]
+        optimal, covariance = curve_fit(
+            linear_reg,
+            self.timeData[interactor, self.i_index:self.f_index],
+            self.stressData[interactor, self.i_index:self.f_index],
+            p0=(2, 0)
+        )
+        error = np.sqrt(np.diag(covariance))
+
+        slope = np.append(slope, optimal[0])
+        stdev = np.append(stdev, error[0])
+
+        return slope, stdev, optimal
+
+    def fitSinusoid(
+            self,
+            mode=str,
+    ):
+        if mode == 'normal':
+            optimal_sin, covariance_sin = curve_fit(
+                sinusoid,
+                self.timeData,
+                self.heightData,
+                p0=(1.25, 2.9, 1.75, 1.2)
+            )
+            return optimal_sin, covariance_sin
+
+        elif mode == 'damped':
+            optimal_damped, covariance_damped = curve_fit(
+                damped_sinusoid,
+                self.timeData[45:],
+                self.stressData[45:],
+                p0=(1.5, 0.01, 2.9, 1.75, 1.2)
+            )
+            return optimal_damped, covariance_damped
+
+        elif mode == 'absolute':
+            optimal_abs, covariance_abs = curve_fit(
+                abs_damped_sinusoid,
+                self.timeData[45:],
+                self.stressData[45:],
+                p0=(3, 0.01, 1.75, 1.75)
+            )
+            return optimal_abs, covariance_abs
+
+        else:
+            return 'No fitting functions were selected.'
+
     def printParameters(
             self,
             name,
@@ -514,43 +551,7 @@ class DynamicCompression:
                   f'- Angular frequency: {parameters[2]:.2f} rad/pts = {parameters[2] / s_pt:.1f} rad/s.\n'
                   f'- Frequency: {(parameters[2] / s_pt) / (2 * np.pi):.2f} Hz.\n')
 
-    def getData(
-            self, mode
-    ):
-        # TODO: arrumar a saída dos dados de tempo. Precisa 
-        t_seg = self.data['t_seg in s'].to_numpy()
 
-        tempTime = np.array([])
-        t_segShaped = t_seg.reshape(2 * self.nCycles, len(t_seg) // (2 * self.nCycles))
-
-        for c in np.arange(0, t_segShaped.shape[0], 2):
-            tempTime = np.append(
-                tempTime,
-                np.append(t_segShaped[c], t_segShaped[c + 1] + t_segShaped[c][-1]))
-        tempTime = tempTime.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
-
-        tempTotalTime = np.array([])
-        for c in np.arange(1, tempTime.shape[0], 1):
-            if c > 1:
-                tempTotalTime = np.append(
-                    tempTotalTime, tempTime[c] + tempTotalTime[-1])
-            else:
-                tempTotalTime = np.append(
-                    tempTime[0], tempTime[c] + tempTime[0][-1])
-
-        height = self.data['h in mm'].to_numpy()
-        force = self.data['Fn in N'].to_numpy()
-        stress = (force / self.area) * 0.001  # N/m² => Pa / 1000 == 1 kPa
-
-        if mode == 'Total':
-            return tempTotalTime, height, force, stress
-
-        if mode == 'Cyclic':
-            height = height.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
-            height = force.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
-            height = stress.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
-
-            return tempTime, height, force, stress
 
 
 class Sweep:

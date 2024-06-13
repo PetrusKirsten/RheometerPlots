@@ -70,7 +70,7 @@ if __name__ == "__main__":
         args_values[2],
     )
 
-    fig = DynamicCompression.total_plot(
+    fig = DynamicCompression.plotTotal(
         data,
         args_values[3],
         args_values[4],

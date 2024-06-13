@@ -87,7 +87,7 @@ if __name__ == "__main__":
         args_values[2],
     )
 
-    fig = DynamicCompression.cyclic_plot(
+    fig = DynamicCompression.plotCyclic(
         data,
         args_values[3],
         args_values[4],

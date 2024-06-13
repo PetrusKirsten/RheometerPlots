@@ -195,7 +195,7 @@ class PlotDlg(wx.Dialog):
                 mode='Total',
                 figure_size=(34, 14)
             )
-            DynamicCompression.total_plot(
+            DynamicCompression.plotTotal(
                 data,
                 normal=self.cb_displacFit.GetValue(),
                 damped=self.cb_dampedFit.GetValue(),
@@ -215,13 +215,13 @@ class PlotDlg(wx.Dialog):
                 mode='Cyclic',
                 figure_size=(34, 14)
             )
-            DynamicCompression.cyclic_plot(
+            DynamicCompression.plotCyclic(
                 data,
                 peak_size=int(self.ctrl_peakSize.GetValue()),
                 initial_strain=float(self.ctrl_initStrain.GetValue()),
                 final_strain=float(self.ctrl_finStrain.GetValue()),
-                plot_peak=self.cb_plotPeak.GetValue(),
-                plot_fit=self.cb_plotYM.GetValue(),
+                plotPeak=self.cb_plotPeak.GetValue(),
+                plotFit=self.cb_plotYM.GetValue(),
                 colorSeries=tuple(c / 255 for c in self.color1),
                 colorLinRange=tuple(c / 255 for c in self.color2)
             )
