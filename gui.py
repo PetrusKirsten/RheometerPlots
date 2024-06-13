@@ -44,8 +44,8 @@ class PlotDlg(wx.Dialog):
         # Dialog elements
         self.ctrl_size = (50, -1)
 
-        self.txt_npoints = wx.StaticText(self, -1, 'Number of points:')
-        self.ctrl_npoints = wx.TextCtrl(self, -1, '196', size=self.ctrl_size)
+        self.txt_nCycles = wx.StaticText(self, -1, 'Number of cycles/periods:')
+        self.ctrl_nCycles = wx.TextCtrl(self, -1, '3', size=self.ctrl_size)
 
         self.txt_dpi = wx.StaticText(self, -1, 'Figure resolution (dpi):')
         self.ctrl_dpi = wx.TextCtrl(self, -1, '300', size=self.ctrl_size)
@@ -137,8 +137,8 @@ class PlotDlg(wx.Dialog):
 
     def init_gui(self):
         self.txt_sizer.AddMany((
-            (self.txt_npoints, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
-            (self.ctrl_npoints, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.txt_nCycles, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.ctrl_nCycles, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
             (self.txt_dpi, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
             (self.ctrl_dpi, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
         ))
@@ -175,7 +175,6 @@ class PlotDlg(wx.Dialog):
     def OnPlot(self, e):
         if self.title == plottypes[0]:
             print(f'Plotting {self.title}...')
-
             Sweep.stress(Sweep(data_path=self.data_path),
                          colorStorage=tuple(c / 255 for c in self.color1),
                          colorLoss=tuple(c / 255 for c in self.color2))
@@ -183,7 +182,6 @@ class PlotDlg(wx.Dialog):
 
         if self.title == plottypes[1]:
             print(f'Plotting {self.title}...')
-
             Sweep.oscilatory(Sweep(data_path=self.data_path),
                              colorStorage=tuple(c / 255 for c in self.color1),
                              colorLoss=tuple(c / 255 for c in self.color2))
@@ -191,13 +189,13 @@ class PlotDlg(wx.Dialog):
 
         if self.title == plottypes[2]:
             print(f'Plotting {self.title}...')
-
             data = DynamicCompression(
                 data_path=self.data_path,
-                points=int(self.ctrl_npoints.GetValue()),
+                cycles=int(self.ctrl_nCycles.GetValue()),
+                mode='Total',
                 figure_size=(34, 14)
             )
-            DynamicCompression.total_plot(
+            DynamicCompression.plotTotal(
                 data,
                 normal=self.cb_displacFit.GetValue(),
                 damped=self.cb_dampedFit.GetValue(),
@@ -213,16 +211,17 @@ class PlotDlg(wx.Dialog):
 
             data = DynamicCompression(
                 data_path=self.data_path,
-                points=int(self.ctrl_npoints.GetValue()),
+                cycles=int(self.ctrl_nCycles.GetValue()),
+                mode='Cyclic',
                 figure_size=(34, 14)
             )
-            DynamicCompression.cyclic_plot(
+            DynamicCompression.plotCyclic(
                 data,
                 peak_size=int(self.ctrl_peakSize.GetValue()),
                 initial_strain=float(self.ctrl_initStrain.GetValue()),
                 final_strain=float(self.ctrl_finStrain.GetValue()),
-                plot_peak=self.cb_plotPeak.GetValue(),
-                plot_fit=self.cb_plotYM.GetValue(),
+                plotPeak=self.cb_plotPeak.GetValue(),
+                plotFit=self.cb_plotYM.GetValue(),
                 colorSeries=tuple(c / 255 for c in self.color1),
                 colorLinRange=tuple(c / 255 for c in self.color2)
             )
