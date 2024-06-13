@@ -8,7 +8,7 @@ from matplotlib.ticker import MultipleLocator
 from matplotlib.font_manager import FontProperties
 
 
-def fonts(folder_path, small=10, medium=12, big=14):  # To config different fonts but it isn't working with these
+def fonts(folder_path, small=10, medium=12):  # To config different fonts but it isn't working with these
     font_path = folder_path + 'HelveticaNeueThin.otf'
     helvetica_thin = FontProperties(fname=font_path)
 
@@ -222,7 +222,7 @@ class DynamicCompression:
             peak=True,
             ym=True,
             ratios=(3, 2),  # Charts aspect ratio
-            plotTime=False, plotPeak=False, plotFit=False,  # Additional plots
+            plotPeak=False, plotFit=False,  # Additional plots
             colorSeries='dodgerblue', colorLinRange='crimson'  # Colors from series and linear region, respectively
     ):
         self.peakSize = peak_size
@@ -242,7 +242,7 @@ class DynamicCompression:
         if self.plotStress and self.plotPeak and self.plotYoung:
             self.gs = GridSpec(2, 2, width_ratios=ratios)
 
-            self.cyclicStress(colorSeries, colorLinRange, plotTime, plotPeak, plotFit)
+            self.cyclicStress(colorSeries, colorLinRange, plotPeak, plotFit)
             self.cyclicPeak(colorSeries)
             self.cyclicYoung(colorSeries)
 
@@ -255,20 +255,20 @@ class DynamicCompression:
         elif self.plotStress and self.plotPeak and not self.plotYoung:
             self.gs = GridSpec(1, 2, width_ratios=ratios)
 
-            self.cyclicStress(colorSeries, colorLinRange, plotTime, plotPeak, plotFit)
+            self.cyclicStress(colorSeries, colorLinRange, plotPeak, plotFit)
             self.cyclicPeak(colorSeries)
 
         elif self.plotStress and self.plotYoung and not self.plotPeak:
             self.gs = GridSpec(1, 2, width_ratios=ratios)
 
-            self.cyclicStress(colorSeries, colorLinRange, plotTime, plotPeak, plotFit)
+            self.cyclicStress(colorSeries, colorLinRange, plotPeak, plotFit)
             self.cyclicYoung(colorSeries)
 
         else:
             self.gs = GridSpec(1, 1)
 
             if self.plotStress and not self.plotYoung and not self.plotPeak:
-                self.cyclicStress(colorSeries, colorLinRange, plotTime, plotPeak, plotFit)
+                self.cyclicStress(colorSeries, colorLinRange, plotPeak, plotFit)
 
             if not self.plotStress and self.plotPeak and not self.plotYoung:
                 self.cyclicPeak(colorSeries)
@@ -302,23 +302,19 @@ class DynamicCompression:
     def cyclicStress(
             self,
             colorSeries, colorFit,  # Colors config
-            plotTime=bool, plotPeak=bool, plotFit=bool  # Additional plots
+            plotPeak=bool, plotFit=bool  # Additional plots
     ):
         ax = self.fig.add_subplot(self.gs[:, 0])
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(1)
 
-        if plotTime:  # If True, it shows the Stress X Time plot
-            ax.set_xlabel('Oscillation time (s)')
-        else:
-            ax.set_xlabel('Strain')
-            ax.set_xticks([0, 0.5, 1, 1.5, 2])
-            ax.set_xticklabels(['0%', '10%', '20%', '-10%', '-20%'])
-            ax.xaxis.set_minor_locator(MultipleLocator(0.25))
+        ax.set_xlabel('Oscillation time (s)')
+        ax.set_xticks([0, 0.5, 1, 1.5, 2])
+        # ax.xaxis.set_minor_locator(MultipleLocator(0.25))
         ax.set_xlim([0, 2])
 
         ax.set_ylabel('Stress (kPa)')
-        ax.yaxis.set_major_locator(MultipleLocator(0.50))
-        ax.yaxis.set_minor_locator(MultipleLocator(0.25))
+        # ax.yaxis.set_major_locator(MultipleLocator(0.50))
+        # ax.yaxis.set_minor_locator(MultipleLocator(0.25))
         ax.set_ylim([-0.25, self.stressData.max() + self.stressData.max() * 0.15])
 
         # Plot the linear range and its values
@@ -339,7 +335,8 @@ class DynamicCompression:
 
             # Plot experimental data
             ax.scatter(
-                np.append(self.timeData[i, :self.timeData.shape[1] // 2], self.timeData[i, self.timeData.shape[1] // 2:]), self.stressData[i, :],
+                np.append(self.timeData[i, :self.timeData.shape[1] // 2],
+                          self.timeData[i, self.timeData.shape[1] // 2:]), self.stressData[i, :],
                 label=f'#{i + 1} period', color=colorSeries, edgecolors='none', s=30, alpha=(0.8 - 0.25 * i))
 
             # If plot_peak is True, plot peak data
@@ -550,8 +547,6 @@ class DynamicCompression:
                   f'- Damping Coef.: {parameters[1]:.2f}.\n'
                   f'- Angular frequency: {parameters[2]:.2f} rad/pts = {parameters[2] / s_pt:.1f} rad/s.\n'
                   f'- Frequency: {(parameters[2] / s_pt) / (2 * np.pi):.2f} Hz.\n')
-
-
 
 
 class Sweep:
