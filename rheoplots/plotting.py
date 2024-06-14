@@ -563,41 +563,30 @@ class Sweep:
         self.fig.subplots_adjust(hspace=0)
 
         # Collecting the data
-        self.data = None
-        self.timeTotal = None
-        self.timeElement = None
-        self.strainStress = None
-        self.compViscosity = None
-        self.temperature = None
-        self.storageModulus = None
-        self.storageModulusErr = None
-        self.lossModulus = None
-        self.lossModulusErr = None
-        self.shearStress = None
-        self.frequency = None
-        self.angVeloc = None
+        self.data, self.timeTotal, self.timeElement, self.strainStress, self.compViscosity, self.temperature, self.storageModulus, self.storageModulusErr, self.lossModulus, self.lossModulusErr, self.shearStress, self.frequency, self.angVeloc = None, None, None, None, None, None, None, None, None, None, None, None, None
 
     def stress(
             self,
             mode='Shear Stress',
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
-        self.getData(mode)
-        ax1 = self.configPlot(mode)
+        (self.shearStress, self.storageModulus, self.storageModulusErr,
+         self.lossModulus, self.lossModulusErr) = self.getData(mode)
+        ax = self.configPlot(mode)
 
-        ax1.scatter(
-            self.shearStress, self.storageModulus,
-            color=colorStorage, alpha=0.75, s=45,
-            marker='o', edgecolors=colorStorage,
-            label="G'")
+        ax.errorbar(
+            self.shearStress, self.storageModulus, yerr=self.storageModulusErr,
+            label="G '",
+            c=colorStorage, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
 
-        ax1.scatter(
-            self.shearStress, self.lossModulus,
-            color=colorLoss, alpha=0.75, s=45,
-            marker='o', edgecolors=colorLoss,
-            label='G"')
+        ax.errorbar(
+            self.shearStress, self.lossModulus, yerr=self.lossModulusErr,
+            label='G "',
+            c=colorLoss, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
-        ax1.legend(ncol=1, frameon=False)
+        ax.legend(ncol=1, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
     def oscilatory(
@@ -605,37 +594,66 @@ class Sweep:
             mode='Freq',
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
-        self.getData(mode)
-        ax1 = self.configPlot(mode)
+        (self.angVeloc, self.storageModulus, self.storageModulusErr,
+         self.lossModulus, self.lossModulusErr) = self.getData(mode)
+        ax = self.configPlot(mode)
+
+        ax.errorbar(
+            self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
+            label="G '",
+            c=colorStorage, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
+
+        ax.errorbar(
+            self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
+            label='G "',
+            c=colorLoss, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
+
+        ax.legend(ncol=2, frameon=False)
+        self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+    def recovery(
+            self,
+            mode='Recovery Freq',
+            colorStorage='dodgerblue', colorLoss='hotpink'
+    ):
+        (self.shearStress, self.storageModulus, self.storageModulusErr,
+         self.lossModulus, self.lossModulusErr) = self.getData(mode)
+        ax1, ax2 = self.configPlot(mode)
 
         ax1.errorbar(
             self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
-            label="G'",
-            color=colorStorage, alpha=0.75, ls='-', lw=1,
-            ecolor=colorStorage, capsize=0, elinewidth=1)
-        ax1.fill_between(
-            self.angVeloc,
-            self.storageModulus - self.storageModulusErr,
-            self.storageModulus + self.storageModulusErr,
-            color=colorStorage, alpha=0.2)
+            label="G '",
+            c=colorStorage, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
 
         ax1.errorbar(
             self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
-            label='G"',
-            color=colorLoss, alpha=0.75, ls='-', lw=1,
-            ecolor=colorLoss, capsize=0, elinewidth=1)
-        ax1.fill_between(
-            self.angVeloc,
-            self.lossModulus - self.lossModulusErr, self.lossModulus + self.lossModulusErr,
-            color=colorLoss, alpha=0.2)
+            label='G "',
+            c=colorLoss, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
-        ax1.legend(ncol=2, frameon=False)
+        ax2.errorbar(
+            self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
+            label="G '",
+            c=colorStorage, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
+
+        ax2.errorbar(
+            self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
+            label='G "',
+            c=colorLoss, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
+
+        # ax1.legend(ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        plt.subplots_adjust(wspace=0, bottom=0.1)
 
     def getData(
             self, xAxis
     ):
-        gPrime, gDouble = np.array([]), np.array([])
+        xData, gPrime, gDouble = np.array([]), np.array([]), np.array([])
 
         for file in range(len(self.data_path)):
             self.data = pd.read_csv(self.data_path[file])
@@ -647,10 +665,10 @@ class Sweep:
             self.temperature = self.data['T in °C'].to_numpy()
 
             if xAxis == 'Shear Stress':
-                self.shearStress = self.data['τ in Pa'].to_numpy()
+                xData = self.data['τ in Pa'].to_numpy()
             if xAxis == 'Freq':
-                self.frequency = self.data['f in Hz'].to_numpy()
-                self.angVeloc = 2 * np.pi * self.frequency
+                freq = self.data['f in Hz'].to_numpy()
+                xData = 2 * np.pi * self.frequency
 
             gPrime = np.append(gPrime, self.data["G' in Pa"].to_numpy())
             gDouble = np.append(gDouble, self.data['G" in Pa'].to_numpy())
@@ -660,12 +678,7 @@ class Sweep:
         gDouble = gDouble.reshape(
             len(self.data_path), int(len(gDouble) / len(self.data_path)))
 
-        self.storageModulus = gPrime.mean(axis=0)
-        self.storageModulusErr = gPrime.std(axis=0)
-        self.lossModulus = gDouble.mean(axis=0)
-        self.lossModulusErr = gDouble.std(axis=0)
-
-        return
+        return xData, gPrime.mean(axis=0), gPrime.std(axis=0), gDouble.mean(axis=0), gDouble.std(axis=0)
 
     def configPlot(
             self,
@@ -673,29 +686,42 @@ class Sweep:
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
         plt.style.use('seaborn-v0_8-ticks')
-        ax1 = self.fig.add_subplot(self.gs[:, 0])
+        ax = self.fig.add_subplot(self.gs[:, 0])
+        ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(1)
+        ax.spines[['top', 'bottom', 'left', 'right']].set_color('dimgray')
+        ax.set_yscale('log')
+        ax.set_ylabel("Storage and Loss moduli (Pa)")
+        ax.set_ylim([
+            int(round(np.min(self.lossModulus) * 0.3, -2)),
+            int(round(np.max(self.storageModulus) * 3, -4))])
+        ax.tick_params(axis='y', which='minor', labelsize=8)
 
-        ax1.set_yscale('log')
-        ax1.set_ylabel("Storage and Loss modulus (Pa)")
-        ax1.set_ylim(
-            [int(round(np.min(self.lossModulus) * 0.3, -2)),
-             int(round(np.max(self.storageModulus) * 3, -4))])
-        ax1.tick_params(axis='y', which='minor', labelsize=8)
-        ax1.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        if 'Recovery' in mode:
+            ax2 = self.fig.add_subplot(self.gs[:, 1])
+            ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(1)
+            ax2.spines[['top', 'bottom', 'left', 'right']].set_color('dimgray')
+            ax2.set_yscale('log')
+            ax2.set_ylabel("Storage and Loss moduli (Pa)")
+            ax2.set_ylim([
+                int(round(np.min(self.lossModulus) * 0.3, -2)),
+                int(round(np.max(self.storageModulus) * 3, -4))])
+            ax2.tick_params(axis='y', which='minor', labelsize=8)
 
-        ax1.set_xscale('log')
-        if mode == 'Freq':
+            return ax2
+
+        ax.set_xscale('log')
+        if 'Freq' in mode:
             self.fig.suptitle(f'Frequency sweeps '
                               f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
-            ax1.set_xlabel('Angular velocity (rad/s)')
-            ax1.set_xlim([self.angVeloc[0], round(self.angVeloc[-1], -1)])
+            ax.set_xlabel('Angular velocity (rad/s)')
+            ax.set_xlim([self.angVeloc[0], self.angVeloc[-1] + 10])
         if mode == 'Shear Stress':
             self.fig.suptitle(f'Stress sweeps '
                               f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
-            ax1.set_xlabel('Shear stress (Pa)')
-            ax1.set_xlim([self.shearStress[0], round(self.shearStress[-1], -1)])
+            ax.set_xlabel('Shear stress (Pa)')
+            ax.set_xlim([self.shearStress[0], self.shearStress[-1] + 10])
 
-        return ax1
+        return ax
 
 
 # Global configs

@@ -4,11 +4,10 @@ from matplotlib import pyplot as plt
 from rheoplots.plotting import DynamicCompression
 from rheoplots.plotting import Sweep
 
-# TODO: create an executable. pyInstaller
-
 plottypes = [
-    'Amplitude sweeps | Stress sweep',
-    'Oscillatory | Frequency sweep',
+    'Stress sweeps',
+    'Frequency sweeps',
+    'Frequency sweeps | Recovery',
     'Dynamic compression | Full',
     'Dynamic compression | Cyclic'
 ]
