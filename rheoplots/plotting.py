@@ -82,37 +82,37 @@ class DynamicCompression:
     ):
         t_seg = self.data['t_seg in s'].to_numpy()
 
-        tempTime = np.array([])
+        tempTimeCyclic = np.array([])
         t_segShaped = t_seg.reshape(2 * self.nCycles, len(t_seg) // (2 * self.nCycles))
 
         for c in np.arange(0, t_segShaped.shape[0], 2):
-            tempTime = np.append(
-                tempTime,
+            tempTimeCyclic = np.append(
+                tempTimeCyclic,
                 np.append(t_segShaped[c], t_segShaped[c + 1] + t_segShaped[c][-1]))
-        tempTime = tempTime.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
+        tempTimeCyclic = tempTimeCyclic.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
 
-        tempTotalTime = np.array([])
-        for c in np.arange(1, tempTime.shape[0], 1):
+        tempTime = np.array([])
+        for c in np.arange(1, tempTimeCyclic.shape[0], 1):
             if c > 1:
-                tempTotalTime = np.append(
-                    tempTotalTime, tempTime[c] + tempTotalTime[-1])
+                tempTime = np.append(
+                    tempTime, tempTimeCyclic[c] + tempTime[-1])
             else:
-                tempTotalTime = np.append(
-                    tempTime[0], tempTime[c] + tempTime[0][-1])
+                tempTime = np.append(
+                    tempTimeCyclic[0], tempTimeCyclic[c] + tempTimeCyclic[0][-1])
 
         height = self.data['h in mm'].to_numpy()
         force = self.data['Fn in N'].to_numpy()
         stress = (force / self.area) * 0.001  # N/m² => Pa / 1000 == 1 kPa
 
         if mode == 'Total':
-            return tempTotalTime, height, force, stress
+            return tempTime, height, force, stress
 
         if mode == 'Cyclic':
-            height = height.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
-            force = force.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
-            stress = stress.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
+            heightCyclic = height.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
+            forceCyclic = force.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
+            stressCyclic = stress.reshape(t_segShaped.shape[0] // 2, t_segShaped.shape[1] * 2)
 
-            return tempTime, height, force, stress
+            return tempTimeCyclic, heightCyclic, forceCyclic, stressCyclic
 
     def plotTotal(
             self,
@@ -583,16 +583,21 @@ class Sweep:
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
         self.getData(mode)
-        ax1, ax2 = self.configPlot(mode)
+        ax1 = self.configPlot(mode)
 
         ax1.scatter(
             self.shearStress, self.storageModulus,
-            color=colorStorage, alpha=0.75, s=45, marker='o', edgecolors=colorStorage)
+            color=colorStorage, alpha=0.75, s=45,
+            marker='o', edgecolors=colorStorage,
+            label="G'")
 
-        ax2.scatter(
+        ax1.scatter(
             self.shearStress, self.lossModulus,
-            color=colorLoss, alpha=0.75, s=45, marker='o', edgecolors=colorLoss)
+            color=colorLoss, alpha=0.75, s=45,
+            marker='o', edgecolors=colorLoss,
+            label='G"')
 
+        ax1.legend(ncol=1, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
     def oscilatory(
@@ -601,20 +606,30 @@ class Sweep:
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
         self.getData(mode)
-        ax1, ax2 = self.configPlot(mode)
+        ax1 = self.configPlot(mode)
 
         ax1.errorbar(
             self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
-            color=colorStorage, alpha=0.75, markersize=7, fmt='o',
-            markeredgecolor=colorStorage, markeredgewidth=1,
-            capsize=3, capthick=1, elinewidth=1, ecolor=colorStorage)
+            label="G'",
+            color=colorStorage, alpha=0.75, ls='-', lw=1,
+            ecolor=colorStorage, capsize=0, elinewidth=1)
+        ax1.fill_between(
+            self.angVeloc,
+            self.storageModulus - self.storageModulusErr,
+            self.storageModulus + self.storageModulusErr,
+            color=colorStorage, alpha=0.2)
 
-        ax2.errorbar(
+        ax1.errorbar(
             self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
-            color=colorLoss, alpha=0.75, markersize=7, fmt='o',
-            markeredgecolor=colorLoss, markeredgewidth=1,
-            capsize=3, capthick=1, elinewidth=1, ecolor=colorLoss)
+            label='G"',
+            color=colorLoss, alpha=0.75, ls='-', lw=1,
+            ecolor=colorLoss, capsize=0, elinewidth=1)
+        ax1.fill_between(
+            self.angVeloc,
+            self.lossModulus - self.lossModulusErr, self.lossModulus + self.lossModulusErr,
+            color=colorLoss, alpha=0.2)
 
+        ax1.legend(ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
     def getData(
@@ -660,46 +675,27 @@ class Sweep:
         plt.style.use('seaborn-v0_8-ticks')
         ax1 = self.fig.add_subplot(self.gs[:, 0])
 
-        # Right axis configs
-        ax2 = ax1.twinx()
-        ax2.set_yscale('log')
-        ax2.set_xscale('log')
-        ax2.set_ylabel('Loss modulus G" (Pa)', color=colorLoss)
-        ax2.set_ylim(
-            [int(round(np.min(self.lossModulus) - np.min(self.lossModulus) * 0.7, -2)),
-             int(round(np.max(self.lossModulus) + np.max(self.lossModulus) * 2.7, -3))])
-        ax2.tick_params(axis='y', which='major', labelcolor=colorLoss, colors=colorLoss)
-        ax2.tick_params(axis='y', which='minor', labelcolor=colorLoss, colors=colorLoss, labelsize=8)
-        ax2.spines['right'].set_color(colorLoss)
-        ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-
-        # Left axis configs
         ax1.set_yscale('log')
-        ax1.set_xscale('log')
-        ax1.set_ylabel("Storage modulus G' (Pa)", color=colorStorage)
+        ax1.set_ylabel("Storage and Loss modulus (Pa)")
         ax1.set_ylim(
-            [int(round(np.min(self.storageModulus) - np.min(self.storageModulus) * 0.8, -3)),
-             int(round(np.max(self.storageModulus) + np.max(self.storageModulus) * 0.4, -4))])
-        ax1.tick_params(axis='y', which='major', labelcolor=colorStorage, colors=colorStorage)
-        ax1.tick_params(axis='y', which='minor', labelcolor=colorStorage, colors=colorStorage, labelsize=8)
-        ax2.spines['left'].set_color(colorStorage)
+            [int(round(np.min(self.lossModulus) * 0.3, -2)),
+             int(round(np.max(self.storageModulus) * 3, -4))])
+        ax1.tick_params(axis='y', which='minor', labelsize=8)
         ax1.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
 
+        ax1.set_xscale('log')
         if mode == 'Freq':
             self.fig.suptitle(f'Frequency sweeps '
                               f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
             ax1.set_xlabel('Angular velocity (rad/s)')
             ax1.set_xlim([self.angVeloc[0], round(self.angVeloc[-1], -1)])
-            ax2.set_xlim([self.angVeloc[0], round(self.angVeloc[-1], -1)])
-
         if mode == 'Shear Stress':
             self.fig.suptitle(f'Stress sweeps '
                               f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
             ax1.set_xlabel('Shear stress (Pa)')
             ax1.set_xlim([self.shearStress[0], round(self.shearStress[-1], -1)])
-            ax2.set_xlim([self.shearStress[0], round(self.shearStress[-1], -1)])
 
-        return ax1, ax2
+        return ax1
 
 
 # Global configs
