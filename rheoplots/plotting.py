@@ -59,9 +59,9 @@ class DynamicCompression:
         self.figSize = figure_size
 
         # Figure vars
-        self.gs = None
         self.fig = plt.figure(figsize=(self.figSize[0] * cm, self.figSize[1] * cm))
         self.fig.subplots_adjust(hspace=0)
+        self.gs = None
         # Plot vars
         self.area = np.pi * 0.015 ** 2  # 30 mm diamater circle => r = 0.015 m => S = 0.0007 m²
         self.peakSize = 3
