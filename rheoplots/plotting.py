@@ -601,13 +601,13 @@ class Sweep:
         ax.errorbar(
             self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
             label="G '",
-            c=colorStorage, fmt='o', ms=6, alpha=0.9,
+            c=colorStorage, fmt='^', ms=6, alpha=0.9,
             ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
 
         ax.errorbar(
             self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
             label='G "',
-            c=colorLoss, fmt='o', ms=6, alpha=0.9,
+            c=colorLoss, fmt='v', ms=6, alpha=0.9,
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
         ax.legend(ncol=2, frameon=False)
@@ -668,7 +668,7 @@ class Sweep:
                 xData = self.data['τ in Pa'].to_numpy()
             if xAxis == 'Freq':
                 freq = self.data['f in Hz'].to_numpy()
-                xData = 2 * np.pi * self.frequency
+                xData = 2 * np.pi * freq
 
             gPrime = np.append(gPrime, self.data["G' in Pa"].to_numpy())
             gDouble = np.append(gDouble, self.data['G" in Pa'].to_numpy())
