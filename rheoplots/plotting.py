@@ -559,7 +559,7 @@ class Sweep:
         self.figure_size = figure_size
 
         self.fig = plt.figure(figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm))
-        self.gs = GridSpec(1, 1)
+        self.gs = GridSpec(1, 2)
         self.fig.subplots_adjust(hspace=0)
 
         # Collecting the data
@@ -618,8 +618,7 @@ class Sweep:
             mode='Recovery Freq',
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
-        (self.shearStress, self.storageModulus, self.storageModulusErr,
-         self.lossModulus, self.lossModulusErr) = self.getData(mode)
+        self.angVeloc, self.storageModulus, self.storageModulusErr, self.lossModulus, self.lossModulusErr, storageModulus_aft, storageModulusErr_aft, lossModulus_aft, lossModulusErr_aft = self.getDataRecovery()
         ax1, ax2 = self.configPlot(mode)
 
         ax1.errorbar(
@@ -635,13 +634,13 @@ class Sweep:
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
         ax2.errorbar(
-            self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
+            self.angVeloc, storageModulus_aft, yerr=storageModulusErr_aft,
             label="G '",
             c=colorStorage, fmt='o', ms=6, alpha=0.9,
             ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
 
         ax2.errorbar(
-            self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
+            self.angVeloc, lossModulus_aft, yerr=lossModulusErr_aft,
             label='G "',
             c=colorLoss, fmt='o', ms=6, alpha=0.9,
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
@@ -651,7 +650,7 @@ class Sweep:
         plt.subplots_adjust(wspace=0, bottom=0.1)
 
     def getData(
-            self, xAxis
+            self, mode
     ):
         xData, gPrime, gDouble = np.array([]), np.array([]), np.array([])
 
@@ -664,9 +663,9 @@ class Sweep:
             self.compViscosity = self.data['|η*| in mPas'].to_numpy()
             self.temperature = self.data['T in °C'].to_numpy()
 
-            if xAxis == 'Shear Stress':
+            if mode == 'Shear Stress':
                 xData = self.data['τ in Pa'].to_numpy()
-            if xAxis == 'Freq':
+            if mode == 'Freq':
                 freq = self.data['f in Hz'].to_numpy()
                 xData = 2 * np.pi * freq
 
@@ -679,6 +678,49 @@ class Sweep:
             len(self.data_path), int(len(gDouble) / len(self.data_path)))
 
         return xData, gPrime.mean(axis=0), gPrime.std(axis=0), gDouble.mean(axis=0), gDouble.std(axis=0)
+
+    def getDataRecovery(
+            self,
+    ):
+        nFiles = len(self.data_path)
+        # if nFiles % 2 != 0:
+        #     print('It must be selected an even number of files.')
+        #     return [None]*9
+
+        half = nFiles // 2
+
+        xData, gPrime_bef, gDouble_bef = np.array([]), np.array([]), np.array([])
+        for file in range(nFiles-1):
+            self.data = pd.read_csv(self.data_path[file])
+
+            self.timeTotal = self.data['t in s'].to_numpy()
+            self.timeElement = self.data['t_seg in s'].to_numpy()
+            self.strainStress = self.data['ɣ in %'].to_numpy()
+            self.compViscosity = self.data['|η*| in mPas'].to_numpy()
+            self.temperature = self.data['T in °C'].to_numpy()
+            freq = self.data['f in Hz'].to_numpy()
+            xData = 2 * np.pi * freq
+            gPrime_bef = np.append(gPrime_bef, self.data["G' in Pa"].to_numpy())
+            gDouble_bef = np.append(gDouble_bef, self.data['G" in Pa'].to_numpy())
+
+        gPrime_bef = gPrime_bef.reshape(
+            half, len(gPrime_bef) // half)
+        gDouble_bef = gDouble_bef.reshape(
+            half, len(gDouble_bef) // half)
+
+        gPrime_aft, gDouble_aft = np.array([]), np.array([])
+        for file in range(1, nFiles):
+            self.data = pd.read_csv(self.data_path[-file])
+
+            gPrime_aft = np.append(gPrime_aft, self.data["G' in Pa"].to_numpy())
+            gDouble_aft = np.append(gDouble_aft, self.data['G" in Pa'].to_numpy())
+
+        gPrime_aft = gPrime_aft.reshape(
+            half, len(gPrime_aft) // half)
+        gDouble_aft = gDouble_aft.reshape(
+            half, len(gDouble_aft) // half)
+        # TODO: return as list?
+        return xData, gPrime_bef.mean(axis=0), gPrime_bef.std(axis=0), gDouble_bef.mean(axis=0), gDouble_bef.std(axis=0), gPrime_aft.mean(axis=0), gPrime_aft.std(axis=0), gDouble_aft.mean(axis=0), gDouble_aft.std(axis=0)
 
     def configPlot(
             self,
@@ -696,19 +738,6 @@ class Sweep:
             int(round(np.max(self.storageModulus) * 3, -4))])
         ax.tick_params(axis='y', which='minor', labelsize=8)
 
-        if 'Recovery' in mode:
-            ax2 = self.fig.add_subplot(self.gs[:, 1])
-            ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(1)
-            ax2.spines[['top', 'bottom', 'left', 'right']].set_color('dimgray')
-            ax2.set_yscale('log')
-            ax2.set_ylabel("Storage and Loss moduli (Pa)")
-            ax2.set_ylim([
-                int(round(np.min(self.lossModulus) * 0.3, -2)),
-                int(round(np.max(self.storageModulus) * 3, -4))])
-            ax2.tick_params(axis='y', which='minor', labelsize=8)
-
-            return ax2
-
         ax.set_xscale('log')
         if 'Freq' in mode:
             self.fig.suptitle(f'Frequency sweeps '
@@ -720,8 +749,21 @@ class Sweep:
                               f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
             ax.set_xlabel('Shear stress (Pa)')
             ax.set_xlim([self.shearStress[0], self.shearStress[-1] + 10])
+        if 'Recovery' in mode:
+            ax2 = self.fig.add_subplot(self.gs[:, 1])
+            ax2.spines['left'].set_visible(False)
+            ax2.spines[['top', 'bottom', 'right']].set_linewidth(1)
+            ax2.spines[['top', 'bottom', 'right']].set_color('dimgray')
+            ax2.set_yticks([])  # TODO CONSERTAR LABEL E TICKS
+            ax2.set_xscale('log')
+            ax2.set_yscale('log')
+            ax2.set_ylim([
+                int(round(np.min(self.lossModulus) * 0.3, -2)),
+                int(round(np.max(self.storageModulus) * 3, -4))])
 
-        return ax
+            return ax, ax2
+        else:
+            return ax
 
 
 # Global configs

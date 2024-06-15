@@ -188,6 +188,13 @@ class PlotDlg(wx.Dialog):
 
         if self.title == plottypes[2]:
             print(f'Plotting {self.title}...')
+            Sweep.recovery(Sweep(data_path=self.data_path),
+                           colorStorage=tuple(c / 255 for c in self.color1),
+                           colorLoss=tuple(c / 255 for c in self.color2))
+            plt.show()
+
+        if self.title == plottypes[3]:
+            print(f'Plotting {self.title}...')
             data = DynamicCompression(
                 data_path=self.data_path,
                 cycles=int(self.ctrl_nCycles.GetValue()),
@@ -205,7 +212,7 @@ class PlotDlg(wx.Dialog):
             )
             plt.show()
 
-        if self.title == plottypes[3]:
+        if self.title == plottypes[4]:
             print(f'Plotting {self.title}...')
 
             data = DynamicCompression(
@@ -371,9 +378,12 @@ class DataGui(wx.Frame):
             dlg.oscilSweep()
 
         if plottype_choice == plottypes[2]:
-            dlg.dynamicFull()
+            dlg.oscilSweep()
 
         if plottype_choice == plottypes[3]:
+            dlg.dynamicFull()
+
+        if plottype_choice == plottypes[4]:
             dlg.dynamicCyclic()
 
 
