@@ -601,14 +601,14 @@ class Sweep:
         ax.errorbar(
             self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
             label="G '",
-            c=colorStorage, fmt='^', ms=6, alpha=0.9,
-            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
+            c=colorStorage, fmt='o', ms=6, alpha=0.9,
+            ecolor='lightgray', capthick=0, capsize=0, elinewidth=2.5)
 
         ax.errorbar(
             self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
             label='G "',
-            c=colorLoss, fmt='v', ms=6, alpha=0.9,
-            ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
+            c=colorLoss, fmt='o', ms=6, alpha=0.9,
+            ecolor='lightgray', capthick=0, capsize=0, elinewidth=2.5)
 
         ax.legend(ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
