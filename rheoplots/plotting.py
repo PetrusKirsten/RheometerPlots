@@ -52,14 +52,20 @@ class DynamicCompression:
             data_path,
             cycles,
             mode,
-            figure_size=(34, 15)
+            figure_size=(34, 14),
+            dpi=100
     ):
         self.data_path = data_path
         self.nCycles = cycles
+        self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
         self.figSize = figure_size
+        self.dpi = dpi
 
         # Figure vars
-        self.fig = plt.figure(figsize=(self.figSize[0] * cm, self.figSize[1] * cm))
+        self.fig = plt.figure(
+            self.fileTitle,
+            figsize=(self.figSize[0] * cm, self.figSize[1] * cm),
+            dpi=self.dpi)
         self.fig.subplots_adjust(hspace=0)
         self.gs = None
         # Plot vars
@@ -101,6 +107,9 @@ class DynamicCompression:
                     tempTimeCyclic[0], tempTimeCyclic[c] + tempTimeCyclic[0][-1])
 
         height = self.data['h in mm'].to_numpy()
+        height = abs(height * 100 / height.max() - 100)
+        # height = height - height.min()
+        # height = 6.5 * height / height.max()
         force = self.data['Fn in N'].to_numpy()
         stress = (force / self.area) * 0.001  # N/m² => Pa / 1000 == 1 kPa
 
@@ -117,25 +126,29 @@ class DynamicCompression:
     def plotTotal(
             self,
             normal=False, damped=False, absolute=False,  # Fitting plots
-            plot_exp_h=True,  # Additional plot
-            colorax1='dodgerblue', colorax2='silver'  # Colors from stress and height, respectively
+            plot_exp_h=True,                             # Additional plot
+            colorax1='dodgerblue', colorax2='silver'     # Colors from stress and height, respectively
     ):
         self.plotExpHeight = plot_exp_h
 
+        # Fitting
         popt_sin, _ = self.fitSinusoid('normal')
         popt_dpd, _ = self.fitSinusoid('damped')
         popt_abs, _ = self.fitSinusoid('absolute')
 
         # Plots configs
+        plt.style.use('seaborn-v0_8-ticks')
         self.gs = GridSpec(1, 1)
         ax1 = self.fig.add_subplot(self.gs[:, 0])
         self.fig.suptitle(f'Dynamic compression - Full oscillation '
-                          f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
+                          f'({self.fileTitle})', alpha=0.9)
 
         # Left axis configs
-        ax1.set_xlim([0, 2 * self.nCycles])
         ax1.set_xlabel('Time (s)')
+        ax1.set_xlim([0, 2 * self.nCycles])
         ax1.set_ylabel('Stress (kPa)')
+        ax1.set_ylim([self.stressData.min() - self.stressData.min() * 0.1,
+                      self.stressData.max() + self.stressData.max() * 0.1])
         # ax1.yaxis.set_major_locator(MultipleLocator(0.50))
         ax1.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
         # ax1.yaxis.set_minor_locator(MultipleLocator(0.25))
@@ -169,12 +182,12 @@ class DynamicCompression:
             ax2.spines['right'].set_color(colorax2)
             ax2.set_xlim([0, 2 * self.nCycles])
 
-            ax2.set_ylabel('Height (mm)', color=colorax2)
+            ax2.set_ylabel('Strain (%)', color=colorax2)
             ax2.tick_params(axis='y', labelcolor=colorax2, colors=colorax2)
             ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-            ax2.set_ylim([self.heightData.max(),
-                          self.heightData.min() + self.heightData.min() * 0.1])
-            ax2.yaxis.set_major_locator(MultipleLocator(0.5))
+            ax2.set_ylim([self.heightData.min() - self.heightData.min() * 0.1,
+                          self.heightData.max() + self.heightData.max() * 0.1])
+            # ax2.yaxis.set_major_locator(MultipleLocator(0.5))
 
             ax1.set_ylabel('Stress (kPa)', color=colorax1)
             ax1.tick_params(axis='y', labelcolor=colorax1, colors=colorax1)
@@ -192,12 +205,12 @@ class DynamicCompression:
             ax2.spines['right'].set_color(colorax2)
             ax2.set_xlim([0, 2 * self.nCycles])
 
-            ax2.set_ylabel('Height (mm)', color=colorax2)
+            ax2.set_ylabel('Strain (%)', color=colorax2)
             ax2.tick_params(axis='y', labelcolor=colorax2, colors=colorax2)
             ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-            ax2.set_ylim([self.heightData.max(),
-                          self.heightData.min() + self.heightData.min() * 0.1])
-            ax2.yaxis.set_major_locator(MultipleLocator(0.5))
+            ax2.set_ylim([self.heightData.min() - self.heightData.min() * 0.1,
+                          self.heightData.max() + self.heightData.max() * 0.1])
+            # ax2.yaxis.set_major_locator(MultipleLocator(0.5))
 
             ax1.set_ylabel('Stress (kPa)', color=colorax1)
             ax1.tick_params(axis='y', labelcolor=colorax1, colors=colorax1)
@@ -236,8 +249,9 @@ class DynamicCompression:
         self.i_linreg = (0.5 / 10) * self.i_linreg_pct  # Convert the strain values to time values
         self.f_linreg = (0.5 / 10) * self.f_linreg_pct  # (0.5 s)/(10 %) × x%
 
+        plt.style.use('seaborn-v0_8-ticks')
         self.fig.suptitle(f'Dynamic compression - Cycle analysis '
-                          f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
+                          f'({self.fileTitle})', alpha=0.9)
 
         if self.plotStress and self.plotPeak and self.plotYoung:
             self.gs = GridSpec(2, 2, width_ratios=ratios)
@@ -553,13 +567,19 @@ class Sweep:
     def __init__(
             self,
             data_path,
-            figure_size=(22, 15)
+            figure_size=(22, 15),
+            dpi=300
     ):
         self.data_path = data_path
+        self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
         self.figure_size = figure_size
+        self.dpi = dpi
 
-        self.fig = plt.figure(figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm))
-        self.gs = GridSpec(1, 2)
+        self.fig = plt.figure(
+            self.fileTitle,
+            figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm),
+            dpi=self.dpi)
+        self.gs = GridSpec(1, 1)
         self.fig.subplots_adjust(hspace=0)
 
         # Collecting the data
@@ -583,7 +603,7 @@ class Sweep:
         ax.errorbar(
             self.shearStress, self.lossModulus, yerr=self.lossModulusErr,
             label='G "',
-            c=colorLoss, fmt='o', ms=6, alpha=0.9,
+            c=colorLoss, fmt='o', ms=6, alpha=0.9, fillstyle='none',
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
         ax.legend(ncol=1, frameon=False)
@@ -601,13 +621,13 @@ class Sweep:
         ax.errorbar(
             self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
             label="G '",
-            c=colorStorage, fmt='^', ms=6, alpha=0.9,
+            c=colorStorage, fmt='o', ms=6, alpha=0.9,
             ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
 
         ax.errorbar(
             self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
             label='G "',
-            c=colorLoss, fmt='v', ms=6, alpha=0.9,
+            c=colorLoss, fmt='o', ms=6, alpha=0.9, fillstyle='none',
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
         ax.legend(ncol=2, frameon=False)
@@ -618,43 +638,44 @@ class Sweep:
             mode='Recovery Freq',
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
-        self.angVeloc, self.storageModulus, self.storageModulusErr, self.lossModulus, self.lossModulusErr, storageModulus_aft, storageModulusErr_aft, lossModulus_aft, lossModulusErr_aft = self.getDataRecovery()
+        self.angVeloc, self.storageModulus, self.storageModulusErr, gIbef, self.lossModulus, self.lossModulusErr, gIIbef, storageModulus_aft, storageModulusErr_aft, gIaft, lossModulus_aft, lossModulusErr_aft, gIIaft = self.getDataRecovery()
         ax1, ax2 = self.configPlot(mode)
 
+        # Before breakage
         ax1.errorbar(
             self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
             label="G '",
             c=colorStorage, fmt='o', ms=6, alpha=0.9,
             ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
-
         ax1.errorbar(
             self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
             label='G "',
-            c=colorLoss, fmt='o', ms=6, alpha=0.9,
+            c=colorLoss, fmt='o', ms=6, alpha=0.9, fillstyle='none',
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
+        # After breakage
         ax2.errorbar(
             self.angVeloc, storageModulus_aft, yerr=storageModulusErr_aft,
-            label="G '",
+            label=f"G ' (RM: {100 * gIaft / gIbef:.1f}%)",
             c=colorStorage, fmt='o', ms=6, alpha=0.9,
             ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
-
         ax2.errorbar(
             self.angVeloc, lossModulus_aft, yerr=lossModulusErr_aft,
-            label='G "',
-            c=colorLoss, fmt='o', ms=6, alpha=0.9,
+            label=f'G " (RM: {100 * gIIaft / gIIbef:.1f}%)',
+            c=colorLoss, fmt='o', ms=6, alpha=0.9, fillstyle='none',
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
-        # ax1.legend(ncol=2, frameon=False)
+        ax2.legend(ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
         plt.subplots_adjust(wspace=0, bottom=0.1)
 
     def getData(
             self, mode
     ):
+        nFiles = len(self.data_path)
         xData, gPrime, gDouble = np.array([]), np.array([]), np.array([])
 
-        for file in range(len(self.data_path)):
+        for file in range(nFiles):
             self.data = pd.read_csv(self.data_path[file])
 
             self.timeTotal = self.data['t in s'].to_numpy()
@@ -673,24 +694,24 @@ class Sweep:
             gDouble = np.append(gDouble, self.data['G" in Pa'].to_numpy())
 
         gPrime = gPrime.reshape(
-            len(self.data_path), int(len(gPrime) / len(self.data_path)))
+            nFiles, len(gPrime) // nFiles)
         gDouble = gDouble.reshape(
-            len(self.data_path), int(len(gDouble) / len(self.data_path)))
+            nFiles, len(gDouble) // nFiles)
 
         return xData, gPrime.mean(axis=0), gPrime.std(axis=0), gDouble.mean(axis=0), gDouble.std(axis=0)
 
     def getDataRecovery(
-            self,
+            self, nPoints=31
     ):
         nFiles = len(self.data_path)
         # if nFiles % 2 != 0:
         #     print('It must be selected an even number of files.')
         #     return [None]*9
 
-        half = nFiles // 2
+        x, gPrime_bef, gDouble_bef = np.array([]), np.array([]), np.array([])
+        gPrime_aft, gDouble_aft = np.array([]), np.array([])
 
-        xData, gPrime_bef, gDouble_bef = np.array([]), np.array([]), np.array([])
-        for file in range(nFiles-1):
+        for file in range(nFiles):
             self.data = pd.read_csv(self.data_path[file])
 
             self.timeTotal = self.data['t in s'].to_numpy()
@@ -698,29 +719,43 @@ class Sweep:
             self.strainStress = self.data['ɣ in %'].to_numpy()
             self.compViscosity = self.data['|η*| in mPas'].to_numpy()
             self.temperature = self.data['T in °C'].to_numpy()
-            freq = self.data['f in Hz'].to_numpy()
-            xData = 2 * np.pi * freq
-            gPrime_bef = np.append(gPrime_bef, self.data["G' in Pa"].to_numpy())
-            gDouble_bef = np.append(gDouble_bef, self.data['G" in Pa'].to_numpy())
+
+            freq = self.data['f in Hz'].to_numpy()[:nPoints]
+            x = 2 * np.pi * freq
+
+            gPrime_bef = np.append(gPrime_bef, self.data["G' in Pa"].to_numpy()[:nPoints])
+            gDouble_bef = np.append(gDouble_bef, self.data['G" in Pa'].to_numpy()[:nPoints])
+
+            gPrime_aft = np.append(gPrime_aft, self.data["G' in Pa"].to_numpy()[-nPoints:])
+            gDouble_aft = np.append(gDouble_aft, self.data['G" in Pa'].to_numpy()[-nPoints:])
 
         gPrime_bef = gPrime_bef.reshape(
-            half, len(gPrime_bef) // half)
+            nFiles, len(gPrime_bef) // nFiles)
         gDouble_bef = gDouble_bef.reshape(
-            half, len(gDouble_bef) // half)
-
-        gPrime_aft, gDouble_aft = np.array([]), np.array([])
-        for file in range(1, nFiles):
-            self.data = pd.read_csv(self.data_path[-file])
-
-            gPrime_aft = np.append(gPrime_aft, self.data["G' in Pa"].to_numpy())
-            gDouble_aft = np.append(gDouble_aft, self.data['G" in Pa'].to_numpy())
+            nFiles, len(gDouble_bef) // nFiles)
 
         gPrime_aft = gPrime_aft.reshape(
-            half, len(gPrime_aft) // half)
+            nFiles, len(gPrime_aft) // nFiles)
         gDouble_aft = gDouble_aft.reshape(
-            half, len(gDouble_aft) // half)
-        # TODO: return as list?
-        return xData, gPrime_bef.mean(axis=0), gPrime_bef.std(axis=0), gDouble_bef.mean(axis=0), gDouble_bef.std(axis=0), gPrime_aft.mean(axis=0), gPrime_aft.std(axis=0), gDouble_aft.mean(axis=0), gDouble_aft.std(axis=0)
+            nFiles, len(gDouble_aft) // nFiles)
+
+        gIbef = gPrime_bef.mean(axis=0)
+        gIbef_err = gPrime_bef.std(axis=0)
+        gIbef_mean = gIbef.mean()
+
+        gIIbef = gDouble_bef.mean(axis=0)
+        gIIbef_err = gDouble_bef.std(axis=0)
+        gIIbef_mean = gIIbef.mean()
+
+        gIaft = gPrime_aft.mean(axis=0)
+        gIaft_err = gPrime_aft.std(axis=0)
+        gIaft_mean = gIaft.mean()
+
+        gIIaft = gDouble_aft.mean(axis=0)
+        gIIaft_err = gDouble_aft.std(axis=0)
+        giIaft_mean = gIIaft.mean()
+
+        return x, gIbef, gIbef_err, gIbef_mean, gIIbef, gIIbef_err, gIIbef_mean, gIaft, gIaft_err, gIaft_mean, gIIaft, gIIaft_err, giIaft_mean
 
     def configPlot(
             self,
@@ -728,7 +763,11 @@ class Sweep:
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
         plt.style.use('seaborn-v0_8-ticks')
+
+        if 'Recovery' in mode:
+            self.gs = GridSpec(1, 2)
         ax = self.fig.add_subplot(self.gs[:, 0])
+
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(1)
         ax.spines[['top', 'bottom', 'left', 'right']].set_color('dimgray')
         ax.set_yscale('log')
@@ -736,25 +775,31 @@ class Sweep:
         ax.set_ylim([
             int(round(np.min(self.lossModulus) * 0.3, -2)),
             int(round(np.max(self.storageModulus) * 3, -4))])
-        ax.tick_params(axis='y', which='minor', labelsize=8)
+        # ax.tick_params(axis='y', which='minor', labelsize=8)
 
         ax.set_xscale('log')
         if 'Freq' in mode:
             self.fig.suptitle(f'Frequency sweeps '
-                              f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
+                              f'({self.fileTitle})', alpha=0.9)
             ax.set_xlabel('Angular velocity (rad/s)')
             ax.set_xlim([self.angVeloc[0], self.angVeloc[-1] + 10])
+
         if mode == 'Shear Stress':
             self.fig.suptitle(f'Stress sweeps '
-                              f'({os.path.basename(self.data_path[0]).split("/")[-1]})', alpha=0.9)
+                              f'({self.fileTitle})', alpha=0.9)
             ax.set_xlabel('Shear stress (Pa)')
             ax.set_xlim([self.shearStress[0], self.shearStress[-1] + 10])
+
         if 'Recovery' in mode:
             ax2 = self.fig.add_subplot(self.gs[:, 1])
+            ax.spines['right'].set_color('crimson')
+            ax.spines['right'].set_linewidth(1.25)
             ax2.spines['left'].set_visible(False)
             ax2.spines[['top', 'bottom', 'right']].set_linewidth(1)
             ax2.spines[['top', 'bottom', 'right']].set_color('dimgray')
-            ax2.set_yticks([])  # TODO CONSERTAR LABEL E TICKS
+
+            ax2.tick_params(axis='y', which='both', left=False, labelleft=False, right=True, direction='in')
+
             ax2.set_xscale('log')
             ax2.set_yscale('log')
             ax2.set_ylim([
@@ -762,6 +807,7 @@ class Sweep:
                 int(round(np.max(self.storageModulus) * 3, -4))])
 
             return ax, ax2
+
         else:
             return ax
 

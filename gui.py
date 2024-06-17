@@ -129,7 +129,10 @@ class PlotDlg(wx.Dialog):
         self.colorButton2.SetLabel('Loss Modulus')
         self.init_gui()
 
-    def oscilSweep(self):
+    def oscilSweep(self, recovery=False):
+        if recovery:
+            self.txt_nCycles.SetLabel('Number of points per element.')
+
         self.colorButton1.SetLabel('Storage Modulus')
         self.colorButton2.SetLabel('Loss Modulus')
         self.init_gui()
@@ -198,8 +201,7 @@ class PlotDlg(wx.Dialog):
             data = DynamicCompression(
                 data_path=self.data_path,
                 cycles=int(self.ctrl_nCycles.GetValue()),
-                mode='Total',
-                figure_size=(34, 14)
+                mode='Total'
             )
             DynamicCompression.plotTotal(
                 data,
@@ -218,8 +220,7 @@ class PlotDlg(wx.Dialog):
             data = DynamicCompression(
                 data_path=self.data_path,
                 cycles=int(self.ctrl_nCycles.GetValue()),
-                mode='Cyclic',
-                figure_size=(34, 14)
+                mode='Cyclic'
             )
             DynamicCompression.plotCyclic(
                 data,
@@ -378,7 +379,7 @@ class DataGui(wx.Frame):
             dlg.oscilSweep()
 
         if plottype_choice == plottypes[2]:
-            dlg.oscilSweep()
+            dlg.oscilSweep(recovery=True)
 
         if plottype_choice == plottypes[3]:
             dlg.dynamicFull()
