@@ -7,7 +7,8 @@ from rheoplots.plotting import Sweep
 plottypes = [
     'Stress sweeps',
     'Frequency sweeps',
-    'Frequency sweeps | Recovery',
+    'Frequency sweeps | Recovery | Side',
+    'Frequency sweeps | Recovery | Overlapped',
     'Dynamic compression | Full',
     'Dynamic compression | Cyclic'
 ]
@@ -130,11 +131,14 @@ class PlotDlg(wx.Dialog):
         self.init_gui()
 
     def oscilSweep(self, recovery=False):
-        if recovery:
-            self.txt_nCycles.SetLabel('Number of points per element.')
-
         self.colorButton1.SetLabel('Storage Modulus')
         self.colorButton2.SetLabel('Loss Modulus')
+
+        if recovery:
+            self.txt_nCycles.SetLabel('Number of points per element.')
+            self.colorButton1.SetLabel('Moduli before break')
+            self.colorButton2.SetLabel('Moduli after break')
+
         self.init_gui()
 
     def init_gui(self):
@@ -177,26 +181,33 @@ class PlotDlg(wx.Dialog):
     def OnPlot(self, e):
         if self.title == plottypes[0]:
             print(f'Plotting {self.title}...')
-            Sweep.stress(Sweep(data_path=self.data_path),
-                         colorStorage=tuple(c / 255 for c in self.color1),
-                         colorLoss=tuple(c / 255 for c in self.color2))
-            plt.show()
-
-        if self.title == plottypes[1]:
-            print(f'Plotting {self.title}...')
-            Sweep.oscilatory(Sweep(data_path=self.data_path),
+            Sweep.plotStress(Sweep(data_path=self.data_path),
                              colorStorage=tuple(c / 255 for c in self.color1),
                              colorLoss=tuple(c / 255 for c in self.color2))
             plt.show()
 
+        if self.title == plottypes[1]:
+            print(f'Plotting {self.title}...')
+            Sweep.plotOscilatory(Sweep(data_path=self.data_path),
+                                 colorStorage=tuple(c / 255 for c in self.color1),
+                                 colorLoss=tuple(c / 255 for c in self.color2))
+            plt.show()
+
         if self.title == plottypes[2]:
             print(f'Plotting {self.title}...')
-            Sweep.recovery(Sweep(data_path=self.data_path),
-                           colorStorage=tuple(c / 255 for c in self.color1),
-                           colorLoss=tuple(c / 255 for c in self.color2))
+            Sweep.plotRecSide(Sweep(data_path=self.data_path),
+                              colorStorage=tuple(c / 255 for c in self.color1),
+                              colorLoss=tuple(c / 255 for c in self.color2))
             plt.show()
 
         if self.title == plottypes[3]:
+            print(f'Plotting {self.title}...')
+            Sweep.plotRecOverlap(Sweep(data_path=self.data_path),
+                                 colorStorage=tuple(c / 255 for c in self.color1),
+                                 colorLoss=tuple(c / 255 for c in self.color2))
+            plt.show()
+
+        if self.title == plottypes[4]:
             print(f'Plotting {self.title}...')
             data = DynamicCompression(
                 data_path=self.data_path,
@@ -214,7 +225,7 @@ class PlotDlg(wx.Dialog):
             )
             plt.show()
 
-        if self.title == plottypes[4]:
+        if self.title == plottypes[5]:
             print(f'Plotting {self.title}...')
 
             data = DynamicCompression(
@@ -382,9 +393,12 @@ class DataGui(wx.Frame):
             dlg.oscilSweep(recovery=True)
 
         if plottype_choice == plottypes[3]:
-            dlg.dynamicFull()
+            dlg.oscilSweep(recovery=True)
 
         if plottype_choice == plottypes[4]:
+            dlg.dynamicFull()
+
+        if plottype_choice == plottypes[5]:
             dlg.dynamicCyclic()
 
 

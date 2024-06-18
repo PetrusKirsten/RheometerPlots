@@ -46,6 +46,24 @@ def sinusoid(t, a, w, phi, y):
     return a * np.sin(w * t + phi) + y
 
 
+def meanCteRange(array, threshold=200):
+    ranges = []
+    init_range = 0
+
+    for i in range(1, len(array)):
+        if abs(array[i] - array[i - 1]) > threshold:
+            if init_range < i - 1:
+                ranges.append((init_range, i - 1))
+            init_range = i
+
+    if init_range < len(array) - 1:
+        ranges.append((init_range, len(array) - 1))
+
+    end_linRange = np.array(ranges)[0][-1]
+
+    return array[:end_linRange].mean()
+
+
 class DynamicCompression:
     def __init__(
             self,
@@ -59,7 +77,7 @@ class DynamicCompression:
         self.nCycles = cycles
         self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
         self.figSize = figure_size
-        self.dpi = dpi
+        self.dpi = dpi  # TODO: ajustar a config do DPI
 
         # Figure vars
         self.fig = plt.figure(
@@ -126,8 +144,8 @@ class DynamicCompression:
     def plotTotal(
             self,
             normal=False, damped=False, absolute=False,  # Fitting plots
-            plot_exp_h=True,                             # Additional plot
-            colorax1='dodgerblue', colorax2='silver'     # Colors from stress and height, respectively
+            plot_exp_h=True,  # Additional plot
+            colorax1='dodgerblue', colorax2='silver'  # Colors from stress and height, respectively
     ):
         self.plotExpHeight = plot_exp_h
 
@@ -568,7 +586,7 @@ class Sweep:
             self,
             data_path,
             figure_size=(22, 15),
-            dpi=300
+            dpi=100
     ):
         self.data_path = data_path
         self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
@@ -585,14 +603,13 @@ class Sweep:
         # Collecting the data
         self.data, self.timeTotal, self.timeElement, self.strainStress, self.compViscosity, self.temperature, self.storageModulus, self.storageModulusErr, self.lossModulus, self.lossModulusErr, self.shearStress, self.frequency, self.angVeloc = None, None, None, None, None, None, None, None, None, None, None, None, None
 
-    def stress(
+    def plotStress(
             self,
-            mode='Shear Stress',
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
         (self.shearStress, self.storageModulus, self.storageModulusErr,
-         self.lossModulus, self.lossModulusErr) = self.getData(mode)
-        ax = self.configPlot(mode)
+         self.lossModulus, self.lossModulusErr) = self.getData('Shear Stress')
+        ax = self.configPlot('Shear Stress')
 
         ax.errorbar(
             self.shearStress, self.storageModulus, yerr=self.storageModulusErr,
@@ -603,20 +620,19 @@ class Sweep:
         ax.errorbar(
             self.shearStress, self.lossModulus, yerr=self.lossModulusErr,
             label='G "',
-            c=colorLoss, fmt='o', ms=6, alpha=0.9, fillstyle='none',
+            c='w', fmt='o', ms=6, alpha=0.9, mec=colorLoss,
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
         ax.legend(ncol=1, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
-    def oscilatory(
+    def plotOscilatory(
             self,
-            mode='Freq',
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
         (self.angVeloc, self.storageModulus, self.storageModulusErr,
-         self.lossModulus, self.lossModulusErr) = self.getData(mode)
-        ax = self.configPlot(mode)
+         self.lossModulus, self.lossModulusErr) = self.getData('Freq')
+        ax = self.configPlot('Freq')
 
         ax.errorbar(
             self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
@@ -627,21 +643,24 @@ class Sweep:
         ax.errorbar(
             self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
             label='G "',
-            c=colorLoss, fmt='o', ms=6, alpha=0.9, fillstyle='none',
+            c='w', fmt='o', ms=6, alpha=0.9, mec=colorLoss,
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
         ax.legend(ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
-    def recovery(
+    def plotRecSide(
             self,
-            mode='Recovery Freq',
             colorStorage='dodgerblue', colorLoss='hotpink'
     ):
-        self.angVeloc, self.storageModulus, self.storageModulusErr, gIbef, self.lossModulus, self.lossModulusErr, gIIbef, storageModulus_aft, storageModulusErr_aft, gIaft, lossModulus_aft, lossModulusErr_aft, gIIaft = self.getDataRecovery()
-        ax1, ax2 = self.configPlot(mode)
+        self.angVeloc, self.storageModulus, self.storageModulusErr, gIbef, self.lossModulus, self.lossModulusErr, gIIbef, storageModulus_aft, storageModulusErr_aft, gIaft, lossModulus_aft, lossModulusErr_aft, gIIaft = self.getDataRec()
+        ax1, ax2 = self.configPlot('Recovery Side Freq')
 
         # Before breakage
+        ax1.text(
+            np.median(self.angVeloc), int(round(np.max(self.storageModulus) * 2, -4)),
+            f'Before breakage', color='crimson', bbox=dict(facecolor='w', alpha=1, edgecolor='w', pad=0),
+            horizontalalignment='center', verticalalignment='center')
         ax1.errorbar(
             self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
             label="G '",
@@ -650,10 +669,18 @@ class Sweep:
         ax1.errorbar(
             self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
             label='G "',
-            c=colorLoss, fmt='o', ms=6, alpha=0.9, fillstyle='none',
+            c='w', fmt='o', ms=6, alpha=0.9, mec=colorLoss,
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
+        # print(f'ANTES:\n{self.lossModulus}\n'
+        #       f'CTEs:\n{getCteRange(self.lossModulus)}\n')
+        # print(f'{self.removeOutliers(self.lossModulus)}')
+
         # After breakage
+        ax2.text(
+            np.median(self.angVeloc), int(round(np.max(self.storageModulus) * 2, -4)),
+            f'After breakage', color='crimson', bbox=dict(facecolor='w', alpha=1, edgecolor='w', pad=0),
+            horizontalalignment='center', verticalalignment='center')
         ax2.errorbar(
             self.angVeloc, storageModulus_aft, yerr=storageModulusErr_aft,
             label=f"G ' (RM: {100 * gIaft / gIbef:.1f}%)",
@@ -662,10 +689,50 @@ class Sweep:
         ax2.errorbar(
             self.angVeloc, lossModulus_aft, yerr=lossModulusErr_aft,
             label=f'G " (RM: {100 * gIIaft / gIIbef:.1f}%)',
-            c=colorLoss, fmt='o', ms=6, alpha=0.9, fillstyle='none',
+            c='w', fmt='o', ms=6, alpha=0.9, mec=colorLoss,
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
-        ax2.legend(ncol=2, frameon=False)
+        # print(f'ANTES:\n{lossModulus_aft}\n'
+        #       f'CTEs:\n{getCteRange(lossModulus_aft)}\n')
+
+        ax2.legend(loc=3, ncol=1, frameon=False)
+        self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        plt.subplots_adjust(wspace=0, bottom=0.1)
+
+    def plotRecOverlap(
+            self,
+            colorStorage='dodgerblue', colorLoss='hotpink'
+    ):
+        self.angVeloc, self.storageModulus, self.storageModulusErr, gIbef, self.lossModulus, self.lossModulusErr, gIIbef, storageModulus_aft, storageModulusErr_aft, gIaft, lossModulus_aft, lossModulusErr_aft, gIIaft = self.getDataRec()
+        ax = self.configPlot('Recovery Freq')
+
+        # Before breakage
+        ax.errorbar(0, 0, 0, alpha=0, label=f'Before breakage')
+        ax.errorbar(
+            self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
+            label="G '",
+            c=colorStorage, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
+        ax.errorbar(
+            self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
+            label='G "',
+            c='w', fmt='o', ms=6, alpha=0.9, mec=colorStorage,
+            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
+
+        # After breakage
+        ax.errorbar(0, 0, 0, alpha=0, label=f'After breakage')
+        ax.errorbar(
+            self.angVeloc, storageModulus_aft, yerr=storageModulusErr_aft,
+            label=f"G ' (RM: {100 * gIaft / gIbef:.1f}%)",
+            c=colorLoss, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
+        ax.errorbar(
+            self.angVeloc, lossModulus_aft, yerr=lossModulusErr_aft,
+            label=f'G " (RM: {100 * gIIaft / gIIbef:.1f}%)',
+            c='w', fmt='o', ms=6, alpha=0.9, mec=colorLoss,
+            ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
+
+        ax.legend(loc=3, ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
         plt.subplots_adjust(wspace=0, bottom=0.1)
 
@@ -700,13 +767,10 @@ class Sweep:
 
         return xData, gPrime.mean(axis=0), gPrime.std(axis=0), gDouble.mean(axis=0), gDouble.std(axis=0)
 
-    def getDataRecovery(
+    def getDataRec(
             self, nPoints=31
     ):
         nFiles = len(self.data_path)
-        # if nFiles % 2 != 0:
-        #     print('It must be selected an even number of files.')
-        #     return [None]*9
 
         x, gPrime_bef, gDouble_bef = np.array([]), np.array([]), np.array([])
         gPrime_aft, gDouble_aft = np.array([]), np.array([])
@@ -741,30 +805,29 @@ class Sweep:
 
         gIbef = gPrime_bef.mean(axis=0)
         gIbef_err = gPrime_bef.std(axis=0)
-        gIbef_mean = gIbef.mean()
+        gIbef_mean = meanCteRange(gIbef)
 
         gIIbef = gDouble_bef.mean(axis=0)
         gIIbef_err = gDouble_bef.std(axis=0)
-        gIIbef_mean = gIIbef.mean()
+        gIIbef_mean = meanCteRange(gIIbef)
 
         gIaft = gPrime_aft.mean(axis=0)
         gIaft_err = gPrime_aft.std(axis=0)
-        gIaft_mean = gIaft.mean()
+        gIaft_mean = meanCteRange(gIaft)
 
         gIIaft = gDouble_aft.mean(axis=0)
         gIIaft_err = gDouble_aft.std(axis=0)
-        giIaft_mean = gIIaft.mean()
+        gIIaft_mean = meanCteRange(gIIaft)
 
-        return x, gIbef, gIbef_err, gIbef_mean, gIIbef, gIIbef_err, gIIbef_mean, gIaft, gIaft_err, gIaft_mean, gIIaft, gIIaft_err, giIaft_mean
+        return x, gIbef, gIbef_err, gIbef_mean, gIIbef, gIIbef_err, gIIbef_mean, gIaft, gIaft_err, gIaft_mean, gIIaft, gIIaft_err, gIIaft_mean
 
     def configPlot(
             self,
             mode,
-            colorStorage='dodgerblue', colorLoss='hotpink'
     ):
         plt.style.use('seaborn-v0_8-ticks')
 
-        if 'Recovery' in mode:
+        if 'Side' in mode:
             self.gs = GridSpec(1, 2)
         ax = self.fig.add_subplot(self.gs[:, 0])
 
@@ -782,7 +845,7 @@ class Sweep:
             self.fig.suptitle(f'Frequency sweeps '
                               f'({self.fileTitle})', alpha=0.9)
             ax.set_xlabel('Angular velocity (rad/s)')
-            ax.set_xlim([self.angVeloc[0], self.angVeloc[-1] + 10])
+            # ax.set_xlim([self.angVeloc[0], self.angVeloc[-1] + 10])
 
         if mode == 'Shear Stress':
             self.fig.suptitle(f'Stress sweeps '
@@ -791,6 +854,12 @@ class Sweep:
             ax.set_xlim([self.shearStress[0], self.shearStress[-1] + 10])
 
         if 'Recovery' in mode:
+            self.fig.suptitle(f'Frequency sweeps | Modulus recovery '
+                              f'({self.fileTitle})', alpha=0.9)
+
+        if 'Side' in mode:
+            self.fig.suptitle(f'Frequency sweeps | Modulus recovery '
+                              f'({self.fileTitle})', alpha=0.9)
             ax2 = self.fig.add_subplot(self.gs[:, 1])
             ax.spines['right'].set_color('crimson')
             ax.spines['right'].set_linewidth(1.25)
@@ -810,6 +879,20 @@ class Sweep:
 
         else:
             return ax
+
+    def removeOutliers(self, values, outlierCte=1.05):
+        upQuartile = np.percentile(values, 75)
+        lowQuartile = np.percentile(values, 25)
+
+        IQR = (upQuartile - lowQuartile) * outlierCte  # Interquartile Range
+        quartileSet = (lowQuartile - IQR, upQuartile + IQR)
+
+        filtratedArray = []
+        for val in values.tolist():
+            if quartileSet[0] <= val <= quartileSet[1]:
+                filtratedArray.append(val)
+
+        return np.array(filtratedArray)
 
 
 # Global configs
@@ -843,6 +926,6 @@ if __name__ == "__main__":
 
     data = Sweep(data_path=path)
 
-    Sweep.oscilatory(data)
+    Sweep.plotOscilatory(data)
 
     plt.show()
