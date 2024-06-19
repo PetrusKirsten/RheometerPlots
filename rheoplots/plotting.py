@@ -61,7 +61,7 @@ def meanCteRange(array, threshold=200):
 
     end_linRange = np.array(ranges)[0][-1]
 
-    return array[:end_linRange].mean()
+    return [array[:end_linRange].mean(), end_linRange]
 
 
 class DynamicCompression:
@@ -656,41 +656,65 @@ class Sweep:
         self.angVeloc, self.storageModulus, self.storageModulusErr, gIbef, self.lossModulus, self.lossModulusErr, gIIbef, storageModulus_aft, storageModulusErr_aft, gIaft, lossModulus_aft, lossModulusErr_aft, gIIaft = self.getDataRec()
         ax1, ax2 = self.configPlot('Recovery Side Freq')
 
+        # TODO: deixar a visualização dos dados considerados cte mais bonita e copiar para o plotRecOverlap
         # Before breakage
         ax1.text(
             np.median(self.angVeloc), int(round(np.max(self.storageModulus) * 2, -4)),
             f'Before breakage', color='crimson', bbox=dict(facecolor='w', alpha=1, edgecolor='w', pad=0),
             horizontalalignment='center', verticalalignment='center')
+
         ax1.errorbar(
             self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
             label="G '",
             c=colorStorage, fmt='o', ms=6, alpha=0.9,
             ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
         ax1.errorbar(
+            self.angVeloc[:gIbef[1]], self.storageModulus[:gIbef[1]], yerr=self.storageModulusErr[:gIbef[1]],
+            c=colorStorage, fmt='o', ms=6, alpha=0.9, mec='salmon',
+            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
+
+        ax1.errorbar(
             self.angVeloc, self.lossModulus, yerr=self.lossModulusErr,
             label='G "',
             c='w', fmt='o', ms=6, alpha=0.9, mec=colorLoss,
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
-
-        # print(f'ANTES:\n{self.lossModulus}\n'
-        #       f'CTEs:\n{getCteRange(self.lossModulus)}\n')
-        # print(f'{self.removeOutliers(self.lossModulus)}')
+        ax1.errorbar(
+            self.angVeloc[:gIIbef[1]], self.lossModulus[:gIIbef[1]], yerr=self.lossModulusErr[:gIIbef[1]],
+            c='w', fmt='o', ms=6, alpha=0.9, mec='salmon',
+            ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
         # After breakage
         ax2.text(
             np.median(self.angVeloc), int(round(np.max(self.storageModulus) * 2, -4)),
             f'After breakage', color='crimson', bbox=dict(facecolor='w', alpha=1, edgecolor='w', pad=0),
             horizontalalignment='center', verticalalignment='center')
+
         ax2.errorbar(
             self.angVeloc, storageModulus_aft, yerr=storageModulusErr_aft,
-            label=f"G ' (RM: {100 * gIaft / gIbef:.1f}%)",
+            label=f"G ' (RM: {100 * gIaft[0] / gIbef[0]:.1f}%)",
             c=colorStorage, fmt='o', ms=6, alpha=0.9,
             ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
         ax2.errorbar(
+            self.angVeloc[:gIaft[1]], storageModulus_aft[:gIaft[1]], yerr=storageModulusErr_aft[:gIaft[1]],
+            c=colorStorage, fmt='o', ms=6, alpha=0.9, mec='salmon',
+            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
+
+        ax2.errorbar(
             self.angVeloc, lossModulus_aft, yerr=lossModulusErr_aft,
-            label=f'G " (RM: {100 * gIIaft / gIIbef:.1f}%)',
+            label=f'G " (RM: {100 * gIIaft[0] / gIIbef[0]:.1f}%)',
             c='w', fmt='o', ms=6, alpha=0.9, mec=colorLoss,
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
+        ax2.errorbar(
+            self.angVeloc[:gIIaft[1]], lossModulus_aft[:gIIaft[1]], yerr=lossModulusErr_aft[:gIIaft[1]],
+            c='w', fmt='o', ms=6, alpha=0.9, mec='salmon',
+            ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
+
+        # ax2.annotate('', xy=(self.angVeloc[gIIaft[1]], lossModulus_aft[gIIaft[1]]), xycoords='data',
+        #              xytext=(self.angVeloc[0], lossModulus_aft[0]), textcoords='data',
+        #              arrowprops=dict(arrowstyle='<->',
+        #                              connectionstyle='bar',
+        #                              ec='salmon',
+        #                              shrinkA=3, shrinkB=3), zorder=1)
 
         # print(f'ANTES:\n{lossModulus_aft}\n'
         #       f'CTEs:\n{getCteRange(lossModulus_aft)}\n')
@@ -723,12 +747,12 @@ class Sweep:
         ax.errorbar(0, 0, 0, alpha=0, label=f'After breakage')
         ax.errorbar(
             self.angVeloc, storageModulus_aft, yerr=storageModulusErr_aft,
-            label=f"G ' (RM: {100 * gIaft / gIbef:.1f}%)",
+            label=f"G ' (RM: {100 * gIaft[0] / gIbef[0]:.1f}%)",
             c=colorLoss, fmt='o', ms=6, alpha=0.9,
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
         ax.errorbar(
             self.angVeloc, lossModulus_aft, yerr=lossModulusErr_aft,
-            label=f'G " (RM: {100 * gIIaft / gIIbef:.1f}%)',
+            label=f'G " (RM: {100 * gIIaft[0] / gIIbef[0]:.1f}%)',
             c='w', fmt='o', ms=6, alpha=0.9, mec=colorLoss,
             ecolor=colorLoss, capthick=1, capsize=3, elinewidth=1)
 
@@ -879,20 +903,6 @@ class Sweep:
 
         else:
             return ax
-
-    def removeOutliers(self, values, outlierCte=1.05):
-        upQuartile = np.percentile(values, 75)
-        lowQuartile = np.percentile(values, 25)
-
-        IQR = (upQuartile - lowQuartile) * outlierCte  # Interquartile Range
-        quartileSet = (lowQuartile - IQR, upQuartile + IQR)
-
-        filtratedArray = []
-        for val in values.tolist():
-            if quartileSet[0] <= val <= quartileSet[1]:
-                filtratedArray.append(val)
-
-        return np.array(filtratedArray)
 
 
 # Global configs

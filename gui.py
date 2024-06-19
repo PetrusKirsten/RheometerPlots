@@ -14,6 +14,8 @@ plottypes = [
 ]
 
 
+# TODO: fazer uma caixa de diálogo para gráficos personalizados/outros
+#  que lê as colunas do dataframe e permite selecionar e plotar
 class PlotDlg(wx.Dialog):
     def __init__(self, parent, title, data_path):
         self.title = title
