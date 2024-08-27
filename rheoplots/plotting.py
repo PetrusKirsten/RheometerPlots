@@ -905,6 +905,58 @@ class Sweep:
             return ax
 
 
+class General:
+    def __init__(
+            self,
+            data_path,
+            colorSeries,
+            colorLinRange,
+            figure_size=(22, 15),
+            dpi=100
+    ):
+        self.data_path = data_path
+        self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
+        self.figure_size = figure_size
+        self.dpi = dpi
+
+        self.fig = plt.figure(
+            self.fileTitle,
+            figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm),
+            dpi=self.dpi)
+        self.gs = GridSpec(1, 1)
+        self.fig.subplots_adjust(hspace=0)
+
+        # Collecting the data
+        self.nFiles = len(self.data_path)
+        self.data = pd.read_csv(self.data_path[0])
+
+        self.head = list(self.data.columns)
+        self.arrays = np.array([])
+
+        ax = self.configPlot('Freq')
+
+        gPrime = gPrime.reshape(
+            nFiles, len(gPrime) // nFiles)
+
+        ax.errorbar(
+            self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
+            label="G '",
+            c=colorStorage, fmt='o', ms=6, alpha=0.9,
+            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
+        ax.legend(ncol=2, frameon=False)
+        self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+    def getCol(
+            self,
+            columnName=str
+    ):
+        return self.data[columnName].to_numpy()
+
+    def plot(
+            self
+    ):
+        pass
+
 # Global configs
 np.set_printoptions(threshold=np.inf)  # print the entire array
 cm = 1 / 2.54  # centimeters in inches

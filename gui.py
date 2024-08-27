@@ -3,6 +3,7 @@ import os
 from matplotlib import pyplot as plt
 from rheoplots.plotting import DynamicCompression
 from rheoplots.plotting import Sweep
+from rheoplots.plotting import General
 
 plottypes = [
     'Stress sweeps',
@@ -10,7 +11,8 @@ plottypes = [
     'Frequency sweeps | Recovery | Side',
     'Frequency sweeps | Recovery | Overlapped',
     'Dynamic compression | Full',
-    'Dynamic compression | Cyclic'
+    'Dynamic compression | Cyclic',
+    'Other | Custom'
 ]
 
 
@@ -78,6 +80,43 @@ class PlotDlg(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.OnColor1, id=1)
         self.Bind(wx.EVT_BUTTON, self.OnColor2, id=2)
         self.Bind(wx.EVT_BUTTON, self.OnPlot, id=3)
+
+        print(General(
+            data_path=self.data_path,
+            colorSeries=tuple(c / 255 for c in self.color1),
+            colorLinRange=tuple(c / 255 for c in self.color2)).head)
+
+    def custom(self):
+
+        self.txt_sizer = wx.FlexGridSizer(5, 2, 5, 5)
+
+        self.txt_peakSize = wx.StaticText(self, -1, 'Stress peak range:')
+        self.ctrl_peakSize = wx.TextCtrl(self, -1, '3', size=self.ctrl_size)
+        self.txt_initStrain = wx.StaticText(self, -1, 'Initial strain linear region:')
+        self.ctrl_initStrain = wx.TextCtrl(self, -1, '10', size=self.ctrl_size)
+        self.txt_finStrain = wx.StaticText(self, -1, 'Final strain linear region:')
+        self.ctrl_finStrain = wx.TextCtrl(self, -1, '18', size=self.ctrl_size)
+
+        self.txt_sizer.AddMany((
+            (self.txt_peakSize, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.ctrl_peakSize, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.txt_initStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.ctrl_initStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.txt_finStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
+            (self.ctrl_finStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
+        ))
+
+        self.cb_plotPeak = wx.CheckBox(self, -1, 'Highlight peak region.', (10, 10))
+        self.cb_plotYM = wx.CheckBox(self, -1, "Show Young's Modulus linear fit.", (10, 10))
+
+        self.mainPlot_sizer.AddMany((
+            (self.cb_plotPeak, 0, wx.ALL, 10),
+            (self.cb_plotYM, 0, wx.ALL, 10)
+        ))
+
+        self.colorButton1.SetLabel('Stress')
+        self.colorButton2.SetLabel('Fitted curve')
+        self.init_gui()
 
     def dynamicFull(self):
         self.cb_displacExp = wx.CheckBox(self, -1, 'Experimental height data.', (10, 10))
@@ -247,6 +286,12 @@ class PlotDlg(wx.Dialog):
             )
             plt.show()
 
+        if self.title == plottypes[6]:
+            print(f'Plotting {self.title}...')
+
+            General.plot()
+            plt.show()
+
     def OnColor1(self, evt):
         dlg = wx.ColourDialog(self)
         dlg.GetColourData().SetChooseFull(True)
@@ -402,6 +447,9 @@ class DataGui(wx.Frame):
 
         if plottype_choice == plottypes[5]:
             dlg.dynamicCyclic()
+
+        if plottype_choice == plottypes[6]:
+            dlg.custom()
 
 
 class MyApp(wx.App):
