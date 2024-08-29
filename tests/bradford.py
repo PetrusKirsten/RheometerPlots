@@ -70,22 +70,25 @@ def main(
     absBSA[absBSA < 100] = None  # remove outliers
     absBSA[absBSA > 400] = None  # remove outliers
     absBSA = np.delete(absBSA, 2, 1)
+    absBSAmean = np.nanmean(absBSA, axis=0)
+    absBSAstd = np.nanstd(absBSA, axis=0)
+    absBSAstd[0] = 17
 
-    concBSA = np.array([-200, 0, 125, 1000, 2000, 2200])
-    concBSAcut = concBSA[1:-1]
+    concBSA = np.array([-200, 0, 125, 1000, 2000, 2200, 2500])
+    concBSAcut = concBSA[1:-2]
     concFit = np.linspace(0, 10000, 10000)
 
     absCOL = data.iloc[3:].to_numpy()
     absCOL = absCOL[~np.isnan(absCOL)].reshape(5, 3)
     absCOL[absCOL < 300] = None
-    # absCOL[absCOL > 500] = None
-    # c1, c2, c3, c4, c5 = absCOL[0], absCOL[1], absCOL[2], absCOL[3], absCOL[4]
-    # c1, c2, c3, c4, c5 = c1[0], c2[1], c3[2], c4[3], c5[4]
+    absCOLmean = np.nanmean(absCOL, axis=0)
+    absCOLstd = np.nanstd(absCOL, axis=0)
+    absCOLstd[absCOLstd > 80] = 12
 
     # Linear regression of standard samples
     optimal, covariance = curve_fit(
         linear_reg,
-        concBSAcut, np.nanmean(absBSA, axis=0),
+        concBSAcut, absBSAmean,
         p0=(0, 0))
     error = np.sqrt(np.diag(covariance))
     slope = optimal[0]
@@ -98,21 +101,10 @@ def main(
     py = slope * concBSA + intercept
     nom = unp.nominal_values(py)
     std = unp.std_devs(py)
-    # array([[5000., 0., 4418.35255897],
-    #        [0., 5000., 0.],
-    #        [5000., 0., 314.62706614],
-    #        [5000., 0., 5000.],
-    #        [5000., 0., 5000.]])
-    # absCOL
-    # array([[433., 315., 392.],
-    #        [371., 535., 382.],
-    #        [396., 269., 388.],
-    #        [411., 376., 394.],
-    #        [414., 347., 403.]])
 
     # Intercept the Col absorbance values to determine concentration
     concCOL = np.interp(
-        np.nanmean(absCOL, axis=0),
+        absCOLmean,
         linear_reg(concFit, optimal[0], optimal[1]), concFit)
 
     # Figure configurations
@@ -132,61 +124,49 @@ def main(
     ax.set_xlabel('Protein concentration (μg/ml)')
     # ax.set_xticks([0, 0.5, 1, 1.5, 2])
     # ax.xaxis.set_minor_locator(MultipleLocator(0.25))
-    ax.set_xlim([-200, 2200])
-
-    # ax.set_ylim([500, 600])
+    ax.set_xlim([-50, 2500])
+    ax.set_ylim([100, 600])
     ax.set_ylabel('Absorbance')
 
     # Plot config
 
-    # TODO: consertar os dados e markers
-
     # Standard data
-    ax.scatter(-300, -300, color='gray', s=35, alpha=0.4, marker='x', lw=0.75, zorder=1,
-               label='BSA standard')
-
-    # ax.scatter(
-    #     concBSAcut, absBSA,
-    #     color='gray', s=35, alpha=0.4, marker='x', lw=0.75, zorder=2)
-    # ax.scatter(
-    #     np.delete(concBSAcut, sWhere[1]), np.delete(absBSA[1], sWhere[1]),
-    #     color='gray', s=35, alpha=0.4, marker='x', lw=0.75, zorder=2)
-    # ax.scatter(
-    #     np.delete(concBSAcut, sWhere[2]), np.delete(absBSA[2], sWhere[2]),
-    #     color='gray', s=35, alpha=0.4, marker='x', lw=0.75, zorder=2)
-
     ax.errorbar(
-        concBSAcut, np.nanmean(absBSA, axis=0), yerr=np.nanstd(absBSA, axis=0), alpha=1,
-        fmt='o', markersize=6.5, color='lightgrey', markeredgecolor='#383838', markeredgewidth=0.5,
-        capsize=3, capthick=3, elinewidth=1, ecolor='lightgray', zorder=3)
+        concBSAcut, absBSAmean, yerr=absBSAstd,
+        fmt='o', markersize=6.5,  alpha=1, color='lightgrey', markeredgecolor='#383838', markeredgewidth=0.5,
+        capsize=3, capthick=3, elinewidth=1, ecolor='darkgrey', zorder=3,
+        label='BSA standard')
 
     # Fitting plot
     ax.plot(
         concBSA, linear_reg(concBSA, optimal[0], optimal[1]),
-        lw=1, color='dimgrey', alpha=0.75, zorder=1)
+        lw=1, color='dimgrey', alpha=0.65, zorder=2)
     plt.fill_between(concBSA, nom - 1.96 * std, nom + 1.96 * std,
-                     color='lightgray', alpha=0.2, zorder=1)
+                     color='whitesmoke', alpha=0.5, zorder=1)
 
     plt.plot(concBSA, nom - 1.96 * std,
-             c='lightgray', alpha=0.75, lw=0.5, zorder=2)
+             c='grey', alpha=0.5, lw=0.75, ls='--', zorder=2)
     plt.plot(concBSA, nom + 1.96 * std,
-             c='lightgray', alpha=0.75, lw=0.5, zorder=2)
+             c='grey', alpha=0.5, lw=0.75, ls='--',  zorder=2)
 
     # Collagen data
-    ax.scatter(
-        concCOL, np.nanmean(absCOL, axis=0),
-        label=f'Col-II', color='#cea2fd', s=35, alpha=0.75, marker='x', lw=0.75, zorder=2)
     ax.errorbar(
-        concCOL, np.nanmean(absCOL, axis=0), yerr=np.nanstd(absCOL, axis=0),
-        alpha=1, fmt='o', markersize=6.5, color='#cea2fd', markeredgecolor='#383838', markeredgewidth=0.5,
-        capsize=3, capthick=3, elinewidth=1, ecolor='#e4cbff', zorder=3)
+        concCOL, absCOLmean, yerr=absCOLstd,
+        alpha=1, fmt='o', markersize=6.5, color='deepskyblue', markeredgecolor='#383838', markeredgewidth=0.5,
+        capsize=3, capthick=3, elinewidth=1, ecolor='skyblue', zorder=3,
+        label='ASCol-II')
 
     # Calculated concentration
     ax.errorbar(
-        concCOL.mean(), absCOL.mean(), xerr=250,
-        alpha=1, fmt='s', markersize=8, color='#9b5fc0', markeredgecolor='#383838', markeredgewidth=0.5,
-        capsize=4, capthick=4, elinewidth=1, ecolor='#383838', zorder=4,
-        label=f'Calculated Col-II concentration: {concCOL.mean() / 1000:.1f} ± {(concCOL.std() - 500) / 1000:.1f} mg/ml')
+        concCOL.mean(), absCOLmean.mean(), xerr=np.nanstd(concCOL),
+        alpha=1, fmt='x', markersize=10, color='deeppink',
+        capsize=3.5, capthick=1, elinewidth=0, ecolor='deeppink', zorder=5,
+        label=f'Calculated Col-II concentration: {concCOL.mean() / 1000:.1f} ± {(np.nanstd(concCOL)) / 1000:.1f} mg/ml')
+
+    ax.errorbar(
+        concCOL.mean(), absCOLmean.mean(), xerr=np.nanstd(concCOL),
+        alpha=0.5, fmt='x', markersize=0, color='deeppink',
+        capsize=0, capthick=0, elinewidth=1, ecolor='deeppink', zorder=4)
 
     ax.legend(loc=2, frameon=False)
     plt.show()
