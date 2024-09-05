@@ -60,6 +60,8 @@ def main(
     # Data reading
     data = pd.read_csv(data_path)
 
+    wavelength = data.iloc[0, 1:].to_numpy()
+
     s1 = data[data['Content'] == 'Standard S1'].iloc[:, 1:].to_numpy()
     s2 = data[data['Content'] == 'Standard S2'].iloc[:, 1:].to_numpy()
     s3 = data[data['Content'] == 'Standard S3'].iloc[:, 1:].to_numpy()
@@ -72,7 +74,27 @@ def main(
     c3 = data[data['Content'] == 'Sample X3'].iloc[:, 1:].to_numpy()
     c4 = data[data['Content'] == 'Sample X10'].iloc[:, 1:].to_numpy()
 
-    wavelength = data.iloc[0, 1:].to_numpy()
+    means = {1: ['S1', np.mean(s1, axis=0) - np.mean(s6, axis=0)],
+             2: ['S2', np.mean(s2, axis=0) - np.mean(s6, axis=0)],
+             3: ['S3', np.mean(s3, axis=0) - np.mean(s6, axis=0)],
+             4: ['S4', np.mean(s4, axis=0) - np.mean(s6, axis=0)],
+             5: ['S5', np.mean(s5, axis=0) - np.mean(s6, axis=0)],
+             6: ['S6', np.mean(s6, axis=0) - np.mean(s6, axis=0)],
+             7: ['C1', np.mean(c1, axis=0) - np.mean(s6, axis=0)],
+             8: ['C2', np.mean(c2, axis=0) - np.mean(s6, axis=0)],
+             9: ['C3', np.mean(c3, axis=0) - np.mean(s6, axis=0)],
+             10: ['C4', np.mean(c4, axis=0) - np.mean(s6, axis=0)]}
+
+    errors = {1: ['S1', np.std(s1, axis=0)],
+              2: ['S2', np.std(s2, axis=0)],
+              3: ['S3', np.std(s3, axis=0)],
+              4: ['S4', np.std(s4, axis=0)],
+              5: ['S5', np.std(s5, axis=0)],
+              6: ['S6', np.std(s6, axis=0)],
+              7: ['C1', np.std(c1, axis=0)],
+              8: ['C2', np.std(c2, axis=0)],
+              9: ['C3', np.std(c3, axis=0)],
+              10: ['C4', np.std(c4, axis=0)]}
 
     # abs_std_1 = data.iloc[:, 1:7]
     # abs_std_2 = data.iloc[:, 11:17]
@@ -124,18 +146,43 @@ def main(
     # ax.set_xticks([0, 0.5, 1, 1.5, 2])
     # ax.xaxis.set_minor_locator(MultipleLocator(0.25))
     ax.set_xlim([400, 700])
-    # ax.set_ylim([0, ])
+    # ax.set_ylim([0.2, 1.4])
     ax.set_ylabel('Absorbance')
 
     # Plot config
-    up = list(np.mean(s1, axis=0) + np.std(s1, axis=0))
-    down = list(np.mean(s1, axis=0) - np.std(s1, axis=0))
+    # np.mean(s1, axis=0) + np.std(s1, axis=0)
+    # np.mean(s1, axis=0) - np.std(s1, axis=0)
+    # ax.plot(
+    #     wavelength, np.mean(s1, axis=0) - np.std(s1, axis=0),
+    #     color='dodgerblue', alpha=0.25, zorder=1)
+    # ax.plot(
+    #     wavelength, np.mean(s1, axis=0) + np.std(s1, axis=0),
+    #     color='dodgerblue', alpha=0.25, zorder=1)
+
     # Spectrum plot
-    ax.plot(
-        wavelength, np.mean(s1, axis=0),
-        color='dodgerblue', alpha=0.65, zorder=2)
-    plt.fill_between(wavelength, up, down,
-                     color='whitesmoke', alpha=0.5, zorder=1)
+    for curve in range(1, 7):
+        ax.plot(
+            wavelength, means[curve][1],
+            color='dodgerblue', alpha=0.9 - 0.1*curve, zorder=2,
+            label=means[curve][0])
+        # plt.fill_between(
+        #     wavelength.tolist(),
+        #     (means[curve][1] + errors[curve][1]).tolist(),
+        #     (means[curve][1] - errors[curve][1]).tolist(),
+        #     color='dodgerblue', alpha=0.10, zorder=1)
+
+    for curve in range(7, 11):
+        ax.plot(
+            wavelength, means[curve][1],
+            color='mediumvioletred', alpha=2.2 - 0.2*curve, zorder=2,
+            label=means[curve][0])
+        # plt.fill_between(
+        #     wavelength.tolist(),
+        #     (np.mean(s1, axis=0) + np.std(s1, axis=0)).tolist(),
+        #     (np.mean(s1, axis=0) - np.std(s1, axis=0)).tolist(),
+        #     color='mediumvioletred', alpha=0.10, zorder=1)
+
+    plt.axvline(x=595, color='springgreen', alpha=0.75, ls='-', lw=0.85, label='595 nm')
 
     # Standard data
     # ax.errorbar(
