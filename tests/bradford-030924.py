@@ -60,21 +60,29 @@ def main(
     # Data reading
     data = pd.read_csv(data_path)
 
-    s1 = data[data['Content'] == 'Standard S1'].iloc[:, 1:]
-    s2 = data[data['Content'] == 'Standard S2'].iloc[:, 1:]
-    s3 = data[data['Content'] == 'Standard S3'].iloc[:, 1:]
+    s1 = data[data['Content'] == 'Standard S1'].iloc[:, 1:].to_numpy()
+    s2 = data[data['Content'] == 'Standard S2'].iloc[:, 1:].to_numpy()
+    s3 = data[data['Content'] == 'Standard S3'].iloc[:, 1:].to_numpy()
+    s4 = data[data['Content'] == 'Standard S4'].iloc[:, 1:].to_numpy()
+    s5 = data[data['Content'] == 'Standard S5'].iloc[:, 1:].to_numpy()
+    s6 = data[data['Content'] == 'Standard S6'].iloc[:, 1:].to_numpy()
 
-    wavelength = data.iloc[0, :]
+    c1 = data[data['Content'] == 'Sample X1'].iloc[:, 1:].to_numpy()
+    c2 = data[data['Content'] == 'Sample X2'].iloc[:, 1:].to_numpy()
+    c3 = data[data['Content'] == 'Sample X3'].iloc[:, 1:].to_numpy()
+    c4 = data[data['Content'] == 'Sample X10'].iloc[:, 1:].to_numpy()
 
-    abs_std_1 = data.iloc[:, 1:7]
-    abs_std_2 = data.iloc[:, 11:17]
-    abs_std_3 = data.iloc[:, 21:27]
+    wavelength = data.iloc[0, 1:].to_numpy()
 
-    abs_col_1 = data.iloc[:, 7:11]
-    abs_col_2 = data.iloc[:, 17:21]
-    abs_col_3 = data.iloc[:, 27:29]
-
-    abs_col_12 = data.iloc[:, 29:]
+    # abs_std_1 = data.iloc[:, 1:7]
+    # abs_std_2 = data.iloc[:, 11:17]
+    # abs_std_3 = data.iloc[:, 21:27]
+    #
+    # abs_col_1 = data.iloc[:, 7:11]
+    # abs_col_2 = data.iloc[:, 17:21]
+    # abs_col_3 = data.iloc[:, 27:29]
+    #
+    # abs_col_12 = data.iloc[:, 29:]
 
     # Linear regression of standard samples
     # optimal, covariance = curve_fit(
@@ -116,15 +124,18 @@ def main(
     # ax.set_xticks([0, 0.5, 1, 1.5, 2])
     # ax.xaxis.set_minor_locator(MultipleLocator(0.25))
     ax.set_xlim([400, 700])
-    # ax.set_ylim([100, 600])
+    # ax.set_ylim([0, ])
     ax.set_ylabel('Absorbance')
 
     # Plot config
-
+    up = list(np.mean(s1, axis=0) + np.std(s1, axis=0))
+    down = list(np.mean(s1, axis=0) - np.std(s1, axis=0))
     # Spectrum plot
     ax.plot(
-        (wavelength, wavelength, wavelength), (abs_std_1, abs_std_2, abs_std_3),
-        lw=1, color='dimgrey', alpha=0.65, zorder=2)
+        wavelength, np.mean(s1, axis=0),
+        color='dodgerblue', alpha=0.65, zorder=2)
+    plt.fill_between(wavelength, up, down,
+                     color='whitesmoke', alpha=0.5, zorder=1)
 
     # Standard data
     # ax.errorbar(
