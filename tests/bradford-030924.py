@@ -75,34 +75,37 @@ def main(
     c3 = data[data['Content'] == 'Sample X3'].iloc[:, 1:].to_numpy()
     c4 = data[data['Content'] == 'Sample X10'].iloc[:, 1:].to_numpy()
 
-    meansNBC = {1: ['S1', np.mean(s1, axis=0)],  # NBC: "no blank correction"
-                2: ['S2', np.mean(s2, axis=0)],
-                3: ['S3', np.mean(s3, axis=0)],
-                4: ['S4', np.mean(s4, axis=0)],
-                5: ['S5', np.mean(s5, axis=0)],
-                6: ['S6', np.mean(s6, axis=0)],
-                7: ['C1', np.mean(c1, axis=0)],
-                8: ['C2', np.mean(c2, axis=0)],
-                9: ['C3', np.mean(c3, axis=0)],
-                10: ['C4', np.mean(c4, axis=0)]}
+    values = np.array([s1.flatten(), s2.flatten(), s3.flatten(), s4.flatten(), s5.flatten(), s6.flatten(),
+                       c1.flatten(), c2.flatten(), c3.flatten(), c4.flatten()])
 
-    means = {1: ['S1', np.mean(s1, axis=0) - np.mean(s6, axis=0)],
-             2: ['S2', np.mean(s2, axis=0) - np.mean(s6, axis=0)],
-             3: ['S3', np.mean(s3, axis=0) - np.mean(s6, axis=0)],
-             4: ['S4', np.mean(s4, axis=0) - np.mean(s6, axis=0)],
-             5: ['S5', np.mean(s5, axis=0) - np.mean(s6, axis=0)],
-             6: ['S6', np.mean(s6, axis=0) - np.mean(s6, axis=0)],
-             7: ['C1', np.mean(c1, axis=0) - np.mean(s6, axis=0)],
-             8: ['C2', np.mean(c2, axis=0) - np.mean(s6, axis=0)],
-             9: ['C3', np.mean(c3, axis=0) - np.mean(s6, axis=0)],
-             10: ['C4', np.mean(c4, axis=0) - np.mean(s6, axis=0)]}
+    valuesMeansNBC = {1: ['S1', np.mean(s1, axis=0)],  # NBC: "no blank correction"
+                      2: ['S2', np.mean(s2, axis=0)],
+                      3: ['S3', np.mean(s3, axis=0)],
+                      4: ['S4', np.mean(s4, axis=0)],
+                      5: ['S5', np.mean(s5, axis=0)],
+                      6: ['S6', np.mean(s6, axis=0)],
+                      7: ['C1', np.mean(c1, axis=0)],
+                      8: ['C2', np.mean(c2, axis=0)],
+                      9: ['C3', np.mean(c3, axis=0)],
+                      10: ['C4', np.mean(c4, axis=0)]}
+
+    valuesMeans = {1: ['S1', np.mean(s1, axis=0) - np.mean(s6, axis=0)],
+                   2: ['S2', np.mean(s2, axis=0) - np.mean(s6, axis=0)],
+                   3: ['S3', np.mean(s3, axis=0) - np.mean(s6, axis=0)],
+                   4: ['S4', np.mean(s4, axis=0) - np.mean(s6, axis=0)],
+                   5: ['S5', np.mean(s5, axis=0) - np.mean(s6, axis=0)],
+                   6: ['S6', np.mean(s6, axis=0) - np.mean(s6, axis=0)],
+                   7: ['C1', np.mean(c1, axis=0) - np.mean(s6, axis=0)],
+                   8: ['C2', np.mean(c2, axis=0) - np.mean(s6, axis=0)],
+                   9: ['C3', np.mean(c3, axis=0) - np.mean(s6, axis=0)],
+                   10: ['C4', np.mean(c4, axis=0) - np.mean(s6, axis=0)]}
 
     wl = 595  # nm
     indexWL = np.where(data.iloc[0, :].to_numpy() == wl)[0][0]  # Find index of a specific wavelenght
     absWL = list()
 
-    for sample in means:
-        inAbsWL = means[sample][1][indexWL]
+    for sample in valuesMeans:
+        inAbsWL = valuesMeans[sample][1][indexWL]
         absWL.append(inAbsWL)
 
     errors = {1: ['S1', np.std(s1, axis=0)],
@@ -138,7 +141,7 @@ def main(
     #     absCOLmean,
     #     linear_reg(concFit, optimal[0], optimal[1]), concFit)
 
-    # Figure configurations
+    # Figure configurations for all plots together
     fileTitle = os.path.basename(data_path).split("/")[-1].split(".")[0]
     plt.style.use('seaborn-v0_8-ticks')
     fig = plt.figure(
@@ -173,15 +176,15 @@ def main(
             lineColor = 'mediumvioletred'
 
         ax.plot(
-            wavelength, means[curve][1],
+            wavelength, valuesMeans[curve][1],
             color=lineColor, alpha=init - dif * curve, zorder=2,
-            label=means[curve][0])
+            label=valuesMeans[curve][0])
 
         if plotError:
             plt.fill_between(
                 wavelength.tolist(),
-                (means[curve][1] + errors[curve][1]).tolist(),
-                (means[curve][1] - errors[curve][1]).tolist(),
+                (valuesMeans[curve][1] + errors[curve][1]).tolist(),
+                (valuesMeans[curve][1] - errors[curve][1]).tolist(),
                 color=lineColor, alpha=0.10, zorder=1)
 
     # Wavelenght line marker
@@ -190,6 +193,32 @@ def main(
              horizontalalignment='center',
              verticalalignment='center',
              color='darkorange', backgroundcolor='w', alpha=1)
+
+    ax.legend(loc=2, ncol=2, frameon=False)
+    plt.show()
+
+    # Figure configurations for all plots together
+    fig2, axes = plt.subplots(
+        # 'Complete data' + fileTitle,
+        nrows=2, ncols=5,
+        sharex=True, sharey=True,
+        figsize=(30 * cm, 10 * cm),
+        dpi=dpi)
+    fig.subplots_adjust(wspace=0.11, hspace=0)
+
+    axes[1, 0].set_xlabel('Wavelength (nm)')
+    axes[1, 0].set_ylabel('Absorbance')
+    p = 0
+    for r in np.arange(0, 2, 1):
+        for c in np.arange(0, 5, 1):
+            axes[r, c].spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.5)
+            axes[r, c].set_xlim([400, 700])
+            axes[r, c].plot(wavelength, values[p][0])
+            axes[r, c].plot(wavelength, values[p][1])
+            axes[r, c].plot(wavelength, values[p][2])
+            p += 1
+    plt.tight_layout()
+    plt.show()
 
     # Standard data
     # ax.errorbar(
@@ -228,9 +257,6 @@ def main(
     #     concCOL.mean(), absCOLmean.mean(), xerr=np.nanstd(concCOL),
     #     alpha=0.5, fmt='x', markersize=0, color='deeppink',
     #     capsize=0, capthick=0, elinewidth=1, ecolor='deeppink', zorder=4)
-
-    ax.legend(loc=2, ncol=2, frameon=False)
-    plt.show()
 
 
 if __name__ == "__main__":
