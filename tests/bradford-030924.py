@@ -52,6 +52,7 @@ def predband(x, xd, yd, p, func, conf=0.95):
 
 def main(
         data_path,
+        plotError,
         figSize=(24, 18),
         dpi=100
 ):
@@ -74,6 +75,17 @@ def main(
     c3 = data[data['Content'] == 'Sample X3'].iloc[:, 1:].to_numpy()
     c4 = data[data['Content'] == 'Sample X10'].iloc[:, 1:].to_numpy()
 
+    meansNBC = {1: ['S1', np.mean(s1, axis=0)],  # NBC: "no blank correction"
+                2: ['S2', np.mean(s2, axis=0)],
+                3: ['S3', np.mean(s3, axis=0)],
+                4: ['S4', np.mean(s4, axis=0)],
+                5: ['S5', np.mean(s5, axis=0)],
+                6: ['S6', np.mean(s6, axis=0)],
+                7: ['C1', np.mean(c1, axis=0)],
+                8: ['C2', np.mean(c2, axis=0)],
+                9: ['C3', np.mean(c3, axis=0)],
+                10: ['C4', np.mean(c4, axis=0)]}
+
     means = {1: ['S1', np.mean(s1, axis=0) - np.mean(s6, axis=0)],
              2: ['S2', np.mean(s2, axis=0) - np.mean(s6, axis=0)],
              3: ['S3', np.mean(s3, axis=0) - np.mean(s6, axis=0)],
@@ -84,6 +96,14 @@ def main(
              8: ['C2', np.mean(c2, axis=0) - np.mean(s6, axis=0)],
              9: ['C3', np.mean(c3, axis=0) - np.mean(s6, axis=0)],
              10: ['C4', np.mean(c4, axis=0) - np.mean(s6, axis=0)]}
+
+    wl = 595  # nm
+    indexWL = np.where(data.iloc[0, :].to_numpy() == wl)[0][0]  # Find index of a specific wavelenght
+    absWL = list()
+
+    for sample in means:
+        inAbsWL = means[sample][1][indexWL]
+        absWL.append(inAbsWL)
 
     errors = {1: ['S1', np.std(s1, axis=0)],
               2: ['S2', np.std(s2, axis=0)],
@@ -96,20 +116,10 @@ def main(
               9: ['C3', np.std(c3, axis=0)],
               10: ['C4', np.std(c4, axis=0)]}
 
-    # abs_std_1 = data.iloc[:, 1:7]
-    # abs_std_2 = data.iloc[:, 11:17]
-    # abs_std_3 = data.iloc[:, 21:27]
-    #
-    # abs_col_1 = data.iloc[:, 7:11]
-    # abs_col_2 = data.iloc[:, 17:21]
-    # abs_col_3 = data.iloc[:, 27:29]
-    #
-    # abs_col_12 = data.iloc[:, 29:]
-
-    # Linear regression of standard samples
+    # Linear regression of standard samples  # TODO: fazer gráfico ABS x [Protein] com regressão e estimar resultados
     # optimal, covariance = curve_fit(
     #     linear_reg,
-    #     concBSAcut, absBSAmean,
+    #     wavelength, absWL,
     #     p0=(0, 0))
     # error = np.sqrt(np.diag(covariance))
     # slope = optimal[0]
@@ -135,54 +145,51 @@ def main(
         fileTitle,
         figsize=(figSize[0] * cm, figSize[1] * cm),
         dpi=dpi)
-    fig.suptitle(f'({fileTitle})', alpha=0.9)
+    fig.suptitle(f'{fileTitle}', alpha=0.9)
     fig.subplots_adjust(hspace=0)
 
     gs = GridSpec(1, 1)
     ax = fig.add_subplot(gs[:, 0])
     ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(1)
 
-    ax.set_xlabel('Wavelength (μg/ml)')
+    ax.set_xlabel('Wavelength (nm)')
+    # ax.set_xlabel('Wavelength (μg/ml)')
     # ax.set_xticks([0, 0.5, 1, 1.5, 2])
     # ax.xaxis.set_minor_locator(MultipleLocator(0.25))
     ax.set_xlim([400, 700])
-    # ax.set_ylim([0.2, 1.4])
+    ax.set_ylim([-0.35, 1.2])
     ax.set_ylabel('Absorbance')
 
-    # Plot config
-    # np.mean(s1, axis=0) + np.std(s1, axis=0)
-    # np.mean(s1, axis=0) - np.std(s1, axis=0)
-    # ax.plot(
-    #     wavelength, np.mean(s1, axis=0) - np.std(s1, axis=0),
-    #     color='dodgerblue', alpha=0.25, zorder=1)
-    # ax.plot(
-    #     wavelength, np.mean(s1, axis=0) + np.std(s1, axis=0),
-    #     color='dodgerblue', alpha=0.25, zorder=1)
-
+    # TODO: plotar cada medida do espectro individualmente para procurar por outliers
     # Spectrum plot
-    for curve in range(1, 7):
+    for curve in range(1, 11):
+        init = 0.9
+        dif = 0.1
+        lineColor = 'dodgerblue'
+
+        if curve > 6:
+            init = 2.2
+            dif = 0.2
+            lineColor = 'mediumvioletred'
+
         ax.plot(
             wavelength, means[curve][1],
-            color='dodgerblue', alpha=0.9 - 0.1*curve, zorder=2,
+            color=lineColor, alpha=init - dif * curve, zorder=2,
             label=means[curve][0])
-        # plt.fill_between(
-        #     wavelength.tolist(),
-        #     (means[curve][1] + errors[curve][1]).tolist(),
-        #     (means[curve][1] - errors[curve][1]).tolist(),
-        #     color='dodgerblue', alpha=0.10, zorder=1)
 
-    for curve in range(7, 11):
-        ax.plot(
-            wavelength, means[curve][1],
-            color='mediumvioletred', alpha=2.2 - 0.2*curve, zorder=2,
-            label=means[curve][0])
-        # plt.fill_between(
-        #     wavelength.tolist(),
-        #     (np.mean(s1, axis=0) + np.std(s1, axis=0)).tolist(),
-        #     (np.mean(s1, axis=0) - np.std(s1, axis=0)).tolist(),
-        #     color='mediumvioletred', alpha=0.10, zorder=1)
+        if plotError:
+            plt.fill_between(
+                wavelength.tolist(),
+                (means[curve][1] + errors[curve][1]).tolist(),
+                (means[curve][1] - errors[curve][1]).tolist(),
+                color=lineColor, alpha=0.10, zorder=1)
 
-    plt.axvline(x=595, color='springgreen', alpha=0.75, ls='-', lw=0.85, label='595 nm')
+    # Wavelenght line marker
+    plt.axvline(x=wl, color='orange', alpha=0.75, ls='-', lw=0.85)
+    plt.text(wl, 1.1, f'{wl} nm',
+             horizontalalignment='center',
+             verticalalignment='center',
+             color='darkorange', backgroundcolor='w', alpha=1)
 
     # Standard data
     # ax.errorbar(
@@ -222,9 +229,9 @@ def main(
     #     alpha=0.5, fmt='x', markersize=0, color='deeppink',
     #     capsize=0, capthick=0, elinewidth=1, ecolor='deeppink', zorder=4)
 
-    ax.legend(loc=2, frameon=False)
+    ax.legend(loc=2, ncol=2, frameon=False)
     plt.show()
 
 
 if __name__ == "__main__":
-    main('bradford_ascol-II_030924.csv')
+    main('bradford_ascol-II_030924.csv', True)
