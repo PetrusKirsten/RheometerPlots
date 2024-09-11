@@ -75,8 +75,16 @@ def main(
     c3 = data[data['Content'] == 'Sample X3'].iloc[:, 1:].to_numpy()
     c4 = data[data['Content'] == 'Sample X10'].iloc[:, 1:].to_numpy()
 
-    values = np.array([s1.flatten(), s2.flatten(), s3.flatten(), s4.flatten(), s5.flatten(), s6.flatten(),
-                       c1.flatten(), c2.flatten(), c3.flatten(), c4.flatten()])
+    valuesNBC = {1: ['S1', s1],  # NBC: "no blank correction"
+                 2: ['S2', s2],
+                 3: ['S3', s3],
+                 4: ['S4', s4],
+                 5: ['S5', s5],
+                 6: ['S6', s6],
+                 7: ['C1', c1],
+                 8: ['C2', c2],
+                 9: ['C3', c3],
+                 10: ['C4', c4]}
 
     valuesMeansNBC = {1: ['S1', np.mean(s1, axis=0)],  # NBC: "no blank correction"
                       2: ['S2', np.mean(s2, axis=0)],
@@ -195,30 +203,34 @@ def main(
              color='darkorange', backgroundcolor='w', alpha=1)
 
     ax.legend(loc=2, ncol=2, frameon=False)
-    plt.show()
+    # plt.show()
 
     # Figure configurations for all plots together
     fig2, axes = plt.subplots(
-        # 'Complete data' + fileTitle,
+        num='Complete data' + fileTitle,
         nrows=2, ncols=5,
         sharex=True, sharey=True,
-        figsize=(30 * cm, 10 * cm),
+        figsize=(40 * cm, 20 * cm),
         dpi=dpi)
-    fig.subplots_adjust(wspace=0.11, hspace=0)
 
+    fig2.suptitle(f'{fileTitle}', alpha=0.9)
+    # fig2.subplots_adjust(hspace=-0.5)
     axes[1, 0].set_xlabel('Wavelength (nm)')
     axes[1, 0].set_ylabel('Absorbance')
-    p = 0
+    p = 1
     for r in np.arange(0, 2, 1):
         for c in np.arange(0, 5, 1):
+            axes[r, c].set_title(f'{valuesNBC[p][0]}', size=9)
             axes[r, c].spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.5)
             axes[r, c].set_xlim([400, 700])
-            axes[r, c].plot(wavelength, values[p][0])
-            axes[r, c].plot(wavelength, values[p][1])
-            axes[r, c].plot(wavelength, values[p][2])
+            axes[r, c].plot(wavelength, valuesNBC[p][1][0], label=1)
+            axes[r, c].plot(wavelength, valuesNBC[p][1][1], label=2)
+            axes[r, c].plot(wavelength, valuesNBC[p][1][-1], label=3)
+            axes[r, c].legend(loc=2, ncol=1, frameon=False)
             p += 1
     plt.tight_layout()
     plt.show()
+    fig2.savefig(f'Complete data {fileTitle}.png', dpi=300)
 
     # Standard data
     # ax.errorbar(
@@ -260,4 +272,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main('bradford_ascol-II_030924.csv', True)
+    main('bradford_ascol-II_030924.csv', False)
