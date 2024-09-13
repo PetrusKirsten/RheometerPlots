@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+from matplotlib.ticker import MultipleLocator
 from scipy import stats
 from scipy.optimize import curve_fit
 from matplotlib import pyplot as plt
@@ -52,8 +53,9 @@ def predband(x, xd, yd, p, func, conf=0.95):
 
 def main(
         data_path,
+        save,
         plotError,  # plot std. dev. as error in spectra
-        wavelenth,  # in nm
+        wavelength,  # in nm
         figSize=(24, 18),
         dpi=100
 ):
@@ -62,7 +64,7 @@ def main(
     # Data reading
     data = pd.read_csv(data_path)
 
-    wavelength = data.iloc[0, 1:].to_numpy()
+    wavelengthArray = data.iloc[0, 1:].to_numpy()
 
     s1 = data[data['Content'] == 'Standard S1'].iloc[:, 1:].to_numpy()
     s2 = data[data['Content'] == 'Standard S2'].iloc[:, 1:].to_numpy()
@@ -126,29 +128,31 @@ def main(
               10: ['C4', np.std(c4, axis=0)]}
 
     # Select a specific wavelenth (wl) to analyze the spectra
-    wl = wavelenth  # nm
+    wl = wavelength  # nm
     indexWL = np.where(data.iloc[0, :].to_numpy() == wl)[0][0]  # Find index of a specific wavelenght
-    absWL = list()
+    absWL = dict()
+    errWL = dict()
+
     for sample in valuesMeans:
-        inAbsWL = valuesMeans[sample][1][indexWL]  # Find the index of a spec. wl in each spectrum
-        absWL.append(inAbsWL)                      # append to a new list
+        inAbsWL = list()
+        inAbsWL.append(valuesMeansNBC[sample][0])  # append the label to the list
+        inAbsWL.append(valuesMeansNBC[sample][1][indexWL])  # append the value to the list
+        inAbsWL.append(errors[sample][1][indexWL])  # append the error to the list
+
+        absWL[sample] = inAbsWL
 
     plt.style.use('seaborn-v0_8-ticks')
     fileTitle = os.path.basename(data_path).split("/")[-1].split(".")[0]
 
     # Figure configurations for all plots together.
-    fig = plt.figure(
+    figTog = plt.figure(
         'Spectra together ' + fileTitle,
         figsize=(figSize[0] * cm, figSize[1] * cm),
         dpi=dpi)
-    fig.suptitle(f'{fileTitle}', alpha=0.9)
-    fig.subplots_adjust(hspace=0)
+    figTog.suptitle(f'{fileTitle}', alpha=0.9)
+    figTog.subplots_adjust(hspace=0)
     gs = GridSpec(1, 1)
-    ax = fig.add_subplot(gs[:, 0])
-
-    # ax.set_xlabel('Wavelength (μg/ml)')
-    # ax.xaxis.set_minor_locator(MultipleLocator(0.25))
-    # ax.set_xticks([0, 0.5, 1, 1.5, 2])
+    ax = figTog.add_subplot(gs[:, 0])
 
     ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.5)
     ax.set_xlim([400, 700])
@@ -170,12 +174,12 @@ def main(
             lineColor = 'mediumvioletred'
 
         ax.plot(
-            wavelength, valuesMeans[curve][1],
+            wavelengthArray, valuesMeans[curve][1],
             color=lineColor, alpha=init - dif * curve, lw=1.25,
             label=valuesMeansNBC[curve][0], zorder=2)
         if plotError:
             plt.fill_between(
-                wavelength.tolist(),
+                wavelengthArray.tolist(),
                 (valuesMeans[curve][1] + errors[curve][1]).tolist(),
                 (valuesMeans[curve][1] - errors[curve][1]).tolist(),
                 color=lineColor, alpha=0.10, zorder=1)
@@ -194,21 +198,21 @@ def main(
     ax.legend(loc=2, ncol=2, frameon=False, facecolor='w')
 
     # Figure configurations for separeted spectra
-    fig2, axes = plt.subplots(
+    figSep, axes = plt.subplots(
         num='Separated plots ' + fileTitle,
         figsize=(40 * cm, 20 * cm),
         nrows=2, ncols=5,
         sharex=True, sharey=True)
 
-    fig2.patch.set_facecolor('whitesmoke')
-    fig2.suptitle(f'{fileTitle}', alpha=0.9)
-    fig2.subplots_adjust(hspace=0.05, wspace=0.1)
+    figSep.patch.set_facecolor('whitesmoke')
+    figSep.suptitle(f'{fileTitle}', alpha=0.9)
+    figSep.subplots_adjust(hspace=0.05, wspace=0.1)
 
     axes[1, 0].set_xlabel('Wavelength (nm)')
     axes[1, 0].set_ylabel('Absorbance')
 
-    line = 1                          # interactor for each samples curve
-    for r in np.arange(0, 2, 1):      # loop for row of samples spectra
+    line = 1  # interactor for each samples curve
+    for r in np.arange(0, 2, 1):  # loop for row of samples spectra
         for c in np.arange(0, 5, 1):  # loop for columns of samples spectra
             ax = axes[r, c]
 
@@ -221,9 +225,9 @@ def main(
             ax.yaxis.set_tick_params(labelbottom=False)
             ax.set_yticks([])
 
-            ax.plot(wavelength, valuesNBC[line][1][0], c='dodgerblue', lw=1.2, label=1)
-            ax.plot(wavelength, valuesNBC[line][1][1], c='hotpink', lw=1.2, label=2)
-            ax.plot(wavelength, valuesNBC[line][1][-1], c='orange', lw=1.2, label=3)
+            ax.plot(wavelengthArray, valuesNBC[line][1][0], c='dodgerblue', lw=1.2, label=1)
+            ax.plot(wavelengthArray, valuesNBC[line][1][1], c='hotpink', lw=1.2, label=2)
+            ax.plot(wavelengthArray, valuesNBC[line][1][-1], c='orange', lw=1.2, label=3)
 
             # Wavelenght line markers
             ax.axvline(x=wl, color='grey', alpha=0.75, ls='--', lw=0.85)
@@ -238,73 +242,84 @@ def main(
             line += 1
 
     plt.tight_layout()
-    plt.show()
-
-    fig.savefig(f'Individual spectra {fileTitle}.png', dpi=300)
-    fig2.savefig(f'Spectra together {fileTitle}.png', dpi=300)
-
-    # TODO: fazer gráfico ABS x [Protein] com regressão e estimar resultados
 
     # Linear regression of standard samples
-    # optimal, covariance = curve_fit(
-    #     linear_reg,
-    #     wavelength, absWL,
-    #     p0=(0, 0))
-    # error = np.sqrt(np.diag(covariance))
-    # slope = optimal[0]
-    # stdev = error[0]
-    # intercept = optimal[1]
+    concs = np.array([2000, 1000, 500, 250, 125, 0])
+    npWL = np.array(list(absWL.values()))  # transform the dict to an np.array to
+    optimal, covariance = curve_fit(  # access specific axins inside the list value
+        linear_reg,
+        concs, npWL[:6, 1].astype(float),  # slice first 6 values => standard curve
+        p0=(0, 0))
+    error = np.sqrt(np.diag(covariance))
+    slope = optimal[0]
+    stdev = error[0]
+    intercept = optimal[1]
 
     # calculate regression confidence interval
-    # slope, intercept = unc.correlated_values(optimal, covariance)
-    #
-    # py = slope * concBSA + intercept
-    # nom = unp.nominal_values(py)
-    # std = unp.std_devs(py)
+    slopeCI, interceptCI = unc.correlated_values(optimal, covariance)
+    py = slopeCI.nominal_value * concs + interceptCI.nominal_value
+    nom = unp.nominal_values(py)
+    std = unp.std_devs(py)
 
-    # Intercept the Col absorbance values to determine concentration
-    # concCOL = np.interp(
-    #     absCOLmean,
-    #     linear_reg(concFit, optimal[0], optimal[1]), concFit)
+    figCon, ax = plt.subplots(
+        num='Absorbance X [Protein] curve ' + fileTitle,
+        figsize=(25 * cm, 20 * cm),
+        nrows=1, ncols=1)
+    ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.5)
+    ax.set_ylabel(f'Absorbance at {wl} nm')
+    ax.yaxis.set_minor_locator(MultipleLocator(0.05))
+    # ax.set_ylim([-0.35, 1.2])
+    ax.set_xlim([-250, 2250])
+    ax.set_xticks(np.arange(-100, 2200, 100))
+    ax.tick_params(axis='x', labelrotation=45)
+    ax.set_xlabel('Protein concentration (μg/ml)')
 
-    # Standard data ???
+    # Standard data
     ax.errorbar(
-        wavelength, absWL, yerr=absWL,
-        fmt='o', markersize=6.5,  alpha=1, color='lightgrey', markeredgecolor='#383838', markeredgewidth=0.5,
-        capsize=3, capthick=3, elinewidth=1, ecolor='darkgrey', zorder=3,
-        label='BSA standard')
+        concs, npWL[:6, 1].astype(float), yerr=npWL[:6, 2].astype(float),
+        fmt='o', markersize=8, alpha=1, color='dodgerblue', markeredgecolor='#383838', markeredgewidth=0.5,
+        capsize=3, capthick=3, elinewidth=1, ecolor='dimgrey',
+        lw=1, ls='-',
+        label='BSA standard', zorder=3)
 
     # Fitting plot
-    # ax.plot(
-    #     concBSA, linear_reg(concBSA, optimal[0], optimal[1]),
-    #     lw=1, color='dimgrey', alpha=0.65, zorder=2)
-    # plt.fill_between(concBSA, nom - 1.96 * std, nom + 1.96 * std,
-    #                  color='whitesmoke', alpha=0.5, zorder=1)
-    #
+    concsFit = np.arange(-200, 2200, 1)
+    ax.plot(
+        concs, linear_reg(concs, slope, intercept),
+        lw=1, color='dimgrey', alpha=0.65, zorder=2)
+    plt.fill_between(concs, nom - 1.96 * std, nom + 1.96 * std,
+                     color='whitesmoke', alpha=0.5, zorder=1)
     # plt.plot(concBSA, nom - 1.96 * std,
     #          c='grey', alpha=0.5, lw=0.75, ls='--', zorder=2)
     # plt.plot(concBSA, nom + 1.96 * std,
     #          c='grey', alpha=0.5, lw=0.75, ls='--',  zorder=2)
 
     # Collagen data
-    # ax.errorbar(
-    #     concCOL, absCOLmean, yerr=absCOLstd,
-    #     alpha=1, fmt='o', markersize=6.5, color='deepskyblue', markeredgecolor='#383838', markeredgewidth=0.5,
-    #     capsize=3, capthick=3, elinewidth=1, ecolor='skyblue', zorder=3,
-    #     label='ASCol-II')
 
-    # Calculated concentration
-    # ax.errorbar(
-    #     concCOL.mean(), absCOLmean.mean(), xerr=np.nanstd(concCOL),
-    #     alpha=1, fmt='x', markersize=10, color='deeppink',
-    #     capsize=3.5, capthick=1, elinewidth=0, ecolor='deeppink', zorder=5,
-    #     label=f'Calculated Col-II concentration: {concCOL.mean() / 1000:.1f} ± {(np.nanstd(concCOL)) / 1000:.1f} mg/ml')
-    #
-    # ax.errorbar(
-    #     concCOL.mean(), absCOLmean.mean(), xerr=np.nanstd(concCOL),
-    #     alpha=0.5, fmt='x', markersize=0, color='deeppink',
-    #     capsize=0, capthick=0, elinewidth=1, ecolor='deeppink', zorder=4)
+    colors = ['lightcoral', 'orange', 'mediumseagreen', 'deeppink']
+    for dil in range(0, 4):
+        # Intercept the Col absorbance values to determine concentration
+        concCOL = np.interp(
+            npWL[6:, 1].astype(float)[dil],
+            linear_reg(concs, slope, intercept),
+            concs,
+        )
+        ax.errorbar(
+            concCOL, npWL[6:, 1].astype(float)[dil], yerr=npWL[6:, 2].astype(float)[dil],
+            fmt='o', markersize=6, alpha=0.6, color=colors[dil], markeredgecolor='#383838', markeredgewidth=0.5,
+            capsize=3, capthick=3, elinewidth=1, ecolor='dimgrey',
+            label=f'[{npWL[6:, 0][dil]}] = {concCOL:.1f} μg/ml', zorder=4)
+    ax.grid(which='both', alpha=0.9, color='whitesmoke')
+    ax.legend(loc='upper right', ncol=1, frameon=False, facecolor='w')
+
+    if save:
+        figTog.savefig(f'Individual spectra {fileTitle}.png', dpi=300)
+        figSep.savefig(f'Spectra together {fileTitle}.png', dpi=300)
+        figCon.savefig(f'Calibration curve {fileTitle}.png', dpi=300)
 
 
 if __name__ == "__main__":
-    main('bradford_ascol-II_030924.csv', False, 595)
+    main('bradford_ascol-II_030924.csv',
+         True, True,
+         595)
+    plt.show()
