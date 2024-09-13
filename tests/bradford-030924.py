@@ -52,7 +52,8 @@ def predband(x, xd, yd, p, func, conf=0.95):
 
 def main(
         data_path,
-        plotError,
+        plotError,  # plot std. dev. as error in spectra
+        wavelenth,  # in nm
         figSize=(24, 18),
         dpi=100
 ):
@@ -113,14 +114,6 @@ def main(
                    9: ['C3', np.mean(c3, axis=0) - np.mean(s6, axis=0)],
                    10: ['C4', np.mean(c4, axis=0) - np.mean(s6, axis=0)]}
 
-    wl = 595  # nm
-    indexWL = np.where(data.iloc[0, :].to_numpy() == wl)[0][0]  # Find index of a specific wavelenght
-    absWL = list()
-
-    for sample in valuesMeans:
-        inAbsWL = valuesMeans[sample][1][indexWL]
-        absWL.append(inAbsWL)
-
     errors = {1: ['S1', np.std(s1, axis=0)],
               2: ['S2', np.std(s2, axis=0)],
               3: ['S3', np.std(s3, axis=0)],
@@ -132,29 +125,37 @@ def main(
               9: ['C3', np.std(c3, axis=0)],
               10: ['C4', np.std(c4, axis=0)]}
 
-    # Figure configurations for all plots in one.
-    fileTitle = os.path.basename(data_path).split("/")[-1].split(".")[0]
+    # Select a specific wavelenth (wl) to analyze the spectra
+    wl = wavelenth  # nm
+    indexWL = np.where(data.iloc[0, :].to_numpy() == wl)[0][0]  # Find index of a specific wavelenght
+    absWL = list()
+    for sample in valuesMeans:
+        inAbsWL = valuesMeans[sample][1][indexWL]  # Find the index of a spec. wl in each spectrum
+        absWL.append(inAbsWL)                      # append to a new list
+
     plt.style.use('seaborn-v0_8-ticks')
+    fileTitle = os.path.basename(data_path).split("/")[-1].split(".")[0]
+
+    # Figure configurations for all plots together.
     fig = plt.figure(
-        fileTitle,
+        'Spectra together ' + fileTitle,
         figsize=(figSize[0] * cm, figSize[1] * cm),
         dpi=dpi)
     fig.suptitle(f'{fileTitle}', alpha=0.9)
     fig.subplots_adjust(hspace=0)
-
     gs = GridSpec(1, 1)
     ax = fig.add_subplot(gs[:, 0])
-    ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.5)
 
-    ax.set_xlabel('Wavelength (nm)')
     # ax.set_xlabel('Wavelength (μg/ml)')
-    # ax.set_xticks([0, 0.5, 1, 1.5, 2])
     # ax.xaxis.set_minor_locator(MultipleLocator(0.25))
+    # ax.set_xticks([0, 0.5, 1, 1.5, 2])
+
+    ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.5)
     ax.set_xlim([400, 700])
     ax.set_ylim([-0.35, 1.2])
+    ax.set_xlabel('Wavelength (nm)')
     ax.set_ylabel('Absorbance')
 
-    # TODO: plotar cada medida do espectro individualmente para procurar por outliers
     # Spectrum plot
     for curve in range(1, 11):
         init = 0.9
@@ -172,7 +173,6 @@ def main(
             wavelength, valuesMeans[curve][1],
             color=lineColor, alpha=init - dif * curve, lw=1.25,
             label=valuesMeansNBC[curve][0], zorder=2)
-
         if plotError:
             plt.fill_between(
                 wavelength.tolist(),
@@ -191,14 +191,11 @@ def main(
              horizontalalignment='center',
              verticalalignment='center',
              color='darkorange', backgroundcolor='w', alpha=1)
-
     ax.legend(loc=2, ncol=2, frameon=False, facecolor='w')
 
-    # fig.savefig(f'Spectra together {fileTitle}.png', dpi=300)
-
-    # Figure configurations for all spectra together
+    # Figure configurations for separeted spectra
     fig2, axes = plt.subplots(
-        num='Complete data' + fileTitle,
+        num='Separated plots ' + fileTitle,
         figsize=(40 * cm, 20 * cm),
         nrows=2, ncols=5,
         sharex=True, sharey=True)
@@ -210,51 +207,53 @@ def main(
     axes[1, 0].set_xlabel('Wavelength (nm)')
     axes[1, 0].set_ylabel('Absorbance')
 
-    p = 1
-    for r in np.arange(0, 2, 1):
-        for c in np.arange(0, 5, 1):
+    line = 1                          # interactor for each samples curve
+    for r in np.arange(0, 2, 1):      # loop for row of samples spectra
+        for c in np.arange(0, 5, 1):  # loop for columns of samples spectra
             ax = axes[r, c]
-            ax.set_title(f'{valuesNBC[p][0]}', size=9)
-            ax.set_xlim([400, 700])
-            ax.set_ylim([0.2, 1.4])
 
+            ax.set_title(f'{valuesNBC[line][0]}', size=9)
             ax.spines[['left', 'right', 'top', 'bottom']].set_linewidth(0.5)
-            ax.yaxis.set_tick_params(labelbottom=False)
-            ax.set_yticks([])
             ax.tick_params(direction='in', length=3, width=0.5, colors='k',
                            grid_color='grey', grid_alpha=0.5)
+            ax.set_xlim([400, 700])
+            ax.set_ylim([0.2, 1.4])
+            ax.yaxis.set_tick_params(labelbottom=False)
+            ax.set_yticks([])
 
-            ax.plot(wavelength, valuesNBC[p][1][0], c='dodgerblue', lw=1.2, label=1)
-            ax.plot(wavelength, valuesNBC[p][1][1], c='hotpink', lw=1.2, label=2)
-            ax.plot(wavelength, valuesNBC[p][1][-1], c='orange', lw=1.2, label=3)
+            ax.plot(wavelength, valuesNBC[line][1][0], c='dodgerblue', lw=1.2, label=1)
+            ax.plot(wavelength, valuesNBC[line][1][1], c='hotpink', lw=1.2, label=2)
+            ax.plot(wavelength, valuesNBC[line][1][-1], c='orange', lw=1.2, label=3)
 
             # Wavelenght line markers
             ax.axvline(x=wl, color='grey', alpha=0.75, ls='--', lw=0.85)
             ax.text(wl, 1.1, f'{wl} nm',
                     horizontalalignment='center', verticalalignment='center',
                     size=7, color='dimgrey', backgroundcolor='w', alpha=1)
-
             ax.axvline(x=474, color='grey', alpha=0.75, ls='--', lw=0.85)
             ax.text(474, 1.1, f'474 nm',
                     horizontalalignment='center', verticalalignment='center',
                     size=7, color='dimgrey', backgroundcolor='w', alpha=1)
-
             ax.legend(loc=2, ncol=1, frameon=False, facecolor='w')
-            p += 1
+            line += 1
 
     plt.tight_layout()
     plt.show()
-    # fig2.savefig(f'Individual spectra {fileTitle}.png', dpi=300)
 
-    # Linear regression of standard samples  # TODO: ??? fazer gráfico ABS x [Protein] com regressão e estimar resultados
-    optimal, covariance = curve_fit(
-        linear_reg,
-        wavelength, absWL,
-        p0=(0, 0))
-    error = np.sqrt(np.diag(covariance))
-    slope = optimal[0]
-    stdev = error[0]
-    intercept = optimal[1]
+    fig.savefig(f'Individual spectra {fileTitle}.png', dpi=300)
+    fig2.savefig(f'Spectra together {fileTitle}.png', dpi=300)
+
+    # TODO: fazer gráfico ABS x [Protein] com regressão e estimar resultados
+
+    # Linear regression of standard samples
+    # optimal, covariance = curve_fit(
+    #     linear_reg,
+    #     wavelength, absWL,
+    #     p0=(0, 0))
+    # error = np.sqrt(np.diag(covariance))
+    # slope = optimal[0]
+    # stdev = error[0]
+    # intercept = optimal[1]
 
     # calculate regression confidence interval
     # slope, intercept = unc.correlated_values(optimal, covariance)
@@ -308,4 +307,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main('bradford_ascol-II_030924.csv', False)
+    main('bradford_ascol-II_030924.csv', False, 595)
