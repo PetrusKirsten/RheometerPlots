@@ -225,7 +225,7 @@ class PlotDlg(wx.Dialog):
             Sweep.plotStress(Sweep(data_path=self.data_path),
                              colorStorage=tuple(c / 255 for c in self.color1),
                              colorLoss=tuple(c / 255 for c in self.color2))
-            # plt.show()
+            plt.show()
 
         if self.title == plottypes[1]:
             print(f'Plotting {self.title}...')
@@ -239,14 +239,14 @@ class PlotDlg(wx.Dialog):
             Sweep.plotRecSide(Sweep(data_path=self.data_path),
                               colorStorage=tuple(c / 255 for c in self.color1),
                               colorLoss=tuple(c / 255 for c in self.color2))
-            plt.show()
+            # plt.show()
 
         if self.title == plottypes[3]:
             print(f'Plotting {self.title}...')
             Sweep.plotRecOverlap(Sweep(data_path=self.data_path),
                                  colorStorage=tuple(c / 255 for c in self.color1),
                                  colorLoss=tuple(c / 255 for c in self.color2))
-            plt.show()
+            # plt.show()
 
         if self.title == plottypes[4]:
             print(f'Plotting {self.title}...')
@@ -264,7 +264,7 @@ class PlotDlg(wx.Dialog):
                 colorax1=tuple(c / 255 for c in self.color1),
                 colorax2=tuple(c / 255 for c in self.color2)
             )
-            plt.show()
+            # plt.show()
 
         if self.title == plottypes[5]:
             print(f'Plotting {self.title}...')
@@ -284,13 +284,13 @@ class PlotDlg(wx.Dialog):
                 colorSeries=tuple(c / 255 for c in self.color1),
                 colorLinRange=tuple(c / 255 for c in self.color2)
             )
-            plt.show()
+            # plt.show()
 
         if self.title == plottypes[6]:
             print(f'Plotting {self.title}...')
 
             General.plot()
-            plt.show()
+            # plt.show()
 
     def OnColor1(self, evt):
         dlg = wx.ColourDialog(self)
@@ -416,7 +416,7 @@ class DataGui(wx.Frame):
             self.dirname = dlg.GetDirectory()
             self.data_path = os.path.join(self.filename[0])
             file = open(self.data_path, 'r')
-            self.data_ctrl.SetValue(file.read())
+            # self.data_ctrl.SetValue(file.read())
             file.close()
 
         dlg.Destroy()

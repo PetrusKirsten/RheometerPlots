@@ -76,6 +76,8 @@ class DynamicCompression:
         self.data_path = data_path
         self.nCycles = cycles
         self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
+        self.fileFolder = os.path.dirname(self.data_path[0])
+        self.filePath = os.path.abspath(self.data_path[0]).split(".")[0]
         self.figSize = figure_size
         self.dpi = dpi  # TODO: ajustar a config do DPI
 
@@ -98,7 +100,7 @@ class DynamicCompression:
         # Linear fitting vars
         self.slope_val, self.slope_std = np.array([]), np.array([])
         # Data vars
-        self.data = pd.read_csv(self.data_path[0])
+        self.data = pd.read_excel(self.data_path[0])
         self.timeData, self.heightData, self.forceData, self.stressData = self.getData(mode)
 
     def getData(
@@ -241,6 +243,8 @@ class DynamicCompression:
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
         ax1.legend(loc=1, ncol=2, frameon=False)
         # ax1.text(13.7 * cm, 7.7 * cm, 'Damping coef.: -0.02', )  # Show the damping coef in chart]
+        self.fig.savefig(f'{self.filePath}.png', dpi=300)
+        print(f'Chart saved at {self.fileFolder}')
 
         return self.fig
 
@@ -307,6 +311,9 @@ class DynamicCompression:
 
             if not self.plotStress and not self.plotPeak and self.plotYoung:
                 self.cyclicYoung(colorSeries)
+
+        self.fig.savefig(f'{self.filePath}.png', dpi=300)
+        print(f'Chart saved at {self.fileFolder}')
 
         return self.fig
 
@@ -590,6 +597,8 @@ class Sweep:
     ):
         self.data_path = data_path
         self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
+        self.fileDir = os.path.dirname(self.data_path[0])
+        self.filePath = os.path.abspath(self.data_path[0]).split(".")[0]
         self.figure_size = figure_size
         self.dpi = dpi
 
@@ -625,8 +634,8 @@ class Sweep:
 
         ax.legend(ncol=1, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
-        self.fig.savefig(f'{self.fileTitle}.png', dpi=300)
-        print(f'Chart saved as {self.fileTitle}.png')
+        self.fig.savefig(f'{self.filePath}.png', dpi=300)
+        print(f'Chart saved at {self.fileDir}')
 
     def plotOscilatory(
             self,
@@ -650,7 +659,8 @@ class Sweep:
 
         ax.legend(ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
-        self.fig.savefig(f'{self.fileTitle}.png', dpi=300)  # TODO: add savefig
+        self.fig.savefig(f'{self.filePath}.png', dpi=300)
+        print(f'Chart saved at {self.fileDir}')
 
     def plotRecSide(
             self,
@@ -725,6 +735,8 @@ class Sweep:
         ax2.legend(loc=3, ncol=1, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
         plt.subplots_adjust(wspace=0, bottom=0.1)
+        self.fig.savefig(f'{self.filePath}.png', dpi=300)
+        print(f'Chart saved at {self.fileDir}')
 
     def plotRecOverlap(
             self,
@@ -762,6 +774,8 @@ class Sweep:
         ax.legend(loc=3, ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
         plt.subplots_adjust(wspace=0, bottom=0.1)
+        self.fig.savefig(f'{self.filePath}.png', dpi=300)
+        print(f'Chart saved at {self.fileDir}')
 
     def getData(
             self, mode
@@ -770,7 +784,7 @@ class Sweep:
         xData, gPrime, gDouble = np.array([]), np.array([]), np.array([])
 
         for file in range(nFiles):
-            self.data = pd.read_csv(self.data_path[file])
+            self.data = pd.read_excel(self.data_path[file])
 
             self.timeTotal = self.data['t in s'].to_numpy()
             self.timeElement = self.data['t_seg in s'].to_numpy()
@@ -803,7 +817,7 @@ class Sweep:
         gPrime_aft, gDouble_aft = np.array([]), np.array([])
 
         for file in range(nFiles):
-            self.data = pd.read_csv(self.data_path[file])
+            self.data = pd.read_excel(self.data_path[file])
 
             self.timeTotal = self.data['t in s'].to_numpy()
             self.timeElement = self.data['t_seg in s'].to_numpy()
@@ -931,7 +945,7 @@ class General:
 
         # Collecting the data
         self.nFiles = len(self.data_path)
-        self.data = pd.read_csv(self.data_path[0])
+        self.data = pd.read_excel(self.data_path[0])
 
         self.head = list(self.data.columns)
         self.arrays = np.array([])
@@ -960,7 +974,7 @@ class General:
     ):
         pass
 
-# Global configs
+
 np.set_printoptions(threshold=np.inf)  # print the entire array
 cm = 1 / 2.54  # centimeters in inches
 fonts(folder_path='C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
