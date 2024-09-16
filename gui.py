@@ -225,7 +225,7 @@ class PlotDlg(wx.Dialog):
             Sweep.plotStress(Sweep(data_path=self.data_path),
                              colorStorage=tuple(c / 255 for c in self.color1),
                              colorLoss=tuple(c / 255 for c in self.color2))
-            plt.show()
+            # plt.show()
 
         if self.title == plottypes[1]:
             print(f'Plotting {self.title}...')

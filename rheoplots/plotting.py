@@ -625,6 +625,8 @@ class Sweep:
 
         ax.legend(ncol=1, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        self.fig.savefig(f'{self.fileTitle}.png', dpi=300)
+        print(f'Chart saved as {self.fileTitle}.png')
 
     def plotOscilatory(
             self,
@@ -648,6 +650,7 @@ class Sweep:
 
         ax.legend(ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        self.fig.savefig(f'{self.fileTitle}.png', dpi=300)  # TODO: add savefig
 
     def plotRecSide(
             self,
