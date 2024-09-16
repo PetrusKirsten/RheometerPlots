@@ -81,10 +81,10 @@ class PlotDlg(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self.OnColor2, id=2)
         self.Bind(wx.EVT_BUTTON, self.OnPlot, id=3)
 
-        print(General(
-            data_path=self.data_path,
-            colorSeries=tuple(c / 255 for c in self.color1),
-            colorLinRange=tuple(c / 255 for c in self.color2)).head)
+        # print(General(
+        #     data_path=self.data_path,
+        #     colorSeries=tuple(c / 255 for c in self.color1),
+        #     colorLinRange=tuple(c / 255 for c in self.color2)).head)
 
     def custom(self):
 
