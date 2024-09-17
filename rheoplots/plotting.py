@@ -71,21 +71,18 @@ class DynamicCompression:
             cycles,
             mode,
             figure_size=(34, 14),
-            dpi=100
+            dpi=300
     ):
         self.data_path = data_path
         self.nCycles = cycles
         self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
         self.fileFolder = os.path.dirname(self.data_path[0])
-        self.filePath = os.path.abspath(self.data_path[0]).split(".")[0]
+        self.filePath = self.fileFolder + '\\' + self.fileTitle
         self.figSize = figure_size
         self.dpi = dpi  # TODO: ajustar a config do DPI
 
         # Figure vars
-        self.fig = plt.figure(
-            self.fileTitle,
-            figsize=(self.figSize[0] * cm, self.figSize[1] * cm),
-            dpi=self.dpi)
+        self.fig = plt.figure(self.fileTitle, figsize=(self.figSize[0] * cm, self.figSize[1] * cm))
         self.fig.subplots_adjust(hspace=0)
         self.gs = None
         # Plot vars
@@ -243,7 +240,7 @@ class DynamicCompression:
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
         ax1.legend(loc=1, ncol=2, frameon=False)
         # ax1.text(13.7 * cm, 7.7 * cm, 'Damping coef.: -0.02', )  # Show the damping coef in chart]
-        self.fig.savefig(f'{self.filePath}.png', dpi=300)
+        self.fig.savefig(f'{self.filePath}.png', dpi=self.dpi)
         print(f'Chart saved at {self.fileFolder}')
 
         return self.fig
@@ -312,7 +309,7 @@ class DynamicCompression:
             if not self.plotStress and not self.plotPeak and self.plotYoung:
                 self.cyclicYoung(colorSeries)
 
-        self.fig.savefig(f'{self.filePath}.png', dpi=300)
+        self.fig.savefig(f'{self.filePath}.png', dpi=self.dpi)
         print(f'Chart saved at {self.fileFolder}')
 
         return self.fig
@@ -593,19 +590,16 @@ class Sweep:
             self,
             data_path,
             figure_size=(22, 15),
-            dpi=100
+            dpi=300
     ):
         self.data_path = data_path
         self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
-        self.fileDir = os.path.dirname(self.data_path[0])
-        self.filePath = os.path.abspath(self.data_path[0]).split(".")[0]
+        self.fileFolder = os.path.dirname(self.data_path[0])
+        self.filePath = self.fileFolder + '\\' + self.fileTitle
         self.figure_size = figure_size
         self.dpi = dpi
 
-        self.fig = plt.figure(
-            self.fileTitle,
-            figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm),
-            dpi=self.dpi)
+        self.fig = plt.figure(self.fileTitle, figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm))
         self.gs = GridSpec(1, 1)
         self.fig.subplots_adjust(hspace=0)
 
@@ -634,8 +628,8 @@ class Sweep:
 
         ax.legend(ncol=1, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
-        self.fig.savefig(f'{self.filePath}.png', dpi=300)
-        print(f'Chart saved at {self.fileDir}')
+        self.fig.savefig(f'{self.filePath}.png', dpi=self.dpi)
+        print(f'Chart saved at {self.fileFolder}')
 
     def plotOscilatory(
             self,
@@ -659,8 +653,8 @@ class Sweep:
 
         ax.legend(ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
-        self.fig.savefig(f'{self.filePath}.png', dpi=300)
-        print(f'Chart saved at {self.fileDir}')
+        self.fig.savefig(f'{self.filePath}.png', dpi=self.dpi)
+        print(f'Chart saved at {self.fileFolder}')
 
     def plotRecSide(
             self,
@@ -735,8 +729,8 @@ class Sweep:
         ax2.legend(loc=3, ncol=1, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
         plt.subplots_adjust(wspace=0, bottom=0.1)
-        self.fig.savefig(f'{self.filePath}.png', dpi=300)
-        print(f'Chart saved at {self.fileDir}')
+        self.fig.savefig(f'{self.filePath}.png', dpi=self.dpi)
+        print(f'Chart saved at {self.fileFolder}')
 
     def plotRecOverlap(
             self,
@@ -774,8 +768,8 @@ class Sweep:
         ax.legend(loc=3, ncol=2, frameon=False)
         self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
         plt.subplots_adjust(wspace=0, bottom=0.1)
-        self.fig.savefig(f'{self.filePath}.png', dpi=300)
-        print(f'Chart saved at {self.fileDir}')
+        self.fig.savefig(f'{self.filePath}.png', dpi=self.dpi)
+        print(f'Chart saved at {self.fileFolder}')
 
     def getData(
             self, mode
@@ -929,17 +923,14 @@ class General:
             colorSeries,
             colorLinRange,
             figure_size=(22, 15),
-            dpi=100
+            dpi=300
     ):
         self.data_path = data_path
         self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
         self.figure_size = figure_size
         self.dpi = dpi
 
-        self.fig = plt.figure(
-            self.fileTitle,
-            figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm),
-            dpi=self.dpi)
+        self.fig = plt.figure(self.fileTitle, figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm))
         self.gs = GridSpec(1, 1)
         self.fig.subplots_adjust(hspace=0)
 

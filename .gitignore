@@ -2,3 +2,8 @@
 /__pycache__
 /__pycache__
 __pycache__/gui.cpython-311.pyc
+/build
+/dist
+/.idea
+/.idea
+/__pycache__

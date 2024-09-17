@@ -87,6 +87,7 @@ class PlotDlg(wx.Dialog):
         #     colorLinRange=tuple(c / 255 for c in self.color2)).head)
 
     def custom(self):
+        print(f'Opening {plottypes[-1]}')
 
         self.txt_sizer = wx.FlexGridSizer(5, 2, 5, 5)
 
@@ -119,6 +120,7 @@ class PlotDlg(wx.Dialog):
         self.init_gui()
 
     def dynamicFull(self):
+        print(f'Opening {plottypes[4]}')
         self.cb_displacExp = wx.CheckBox(self, -1, 'Experimental height data.', (10, 10))
         self.cb_displacFit = wx.CheckBox(self, -1, 'Fitted height data.', (10, 10))
         self.cb_dampedFit = wx.CheckBox(self, -1, 'Stress vs. Strain fit: Damped sine wave.', (10, 10))
@@ -136,6 +138,7 @@ class PlotDlg(wx.Dialog):
         self.init_gui()
 
     def dynamicCyclic(self):
+        print(f'Opening {plottypes[5]}')
         self.txt_sizer = wx.FlexGridSizer(5, 2, 5, 5)
 
         self.txt_peakSize = wx.StaticText(self, -1, 'Stress peak range:')
@@ -167,15 +170,18 @@ class PlotDlg(wx.Dialog):
         self.init_gui()
 
     def stressSweep(self):
+        print(f'Opening {plottypes[0]}')
         self.colorButton1.SetLabel('Storage Modulus')
         self.colorButton2.SetLabel('Loss Modulus')
         self.init_gui()
 
     def oscilSweep(self, recovery=False):
+        print(f'Opening {plottypes[1]}')
         self.colorButton1.SetLabel('Storage Modulus')
         self.colorButton2.SetLabel('Loss Modulus')
 
         if recovery:
+            print(f'| Recovery')
             self.txt_nCycles.SetLabel('Number of points per element.')
             self.colorButton1.SetLabel('Moduli before break')
             self.colorButton2.SetLabel('Moduli after break')
