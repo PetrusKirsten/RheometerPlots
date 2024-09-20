@@ -927,6 +927,8 @@ class General:
     ):
         self.data_path = data_path
         self.fileTitle = os.path.basename(self.data_path[0]).split("/")[-1].split(".")[0]
+        self.fileFolder = os.path.dirname(self.data_path[0])
+        self.filePath = self.fileFolder + '\\' + self.fileTitle
         self.figure_size = figure_size
         self.dpi = dpi
 
@@ -934,6 +936,7 @@ class General:
         self.gs = GridSpec(1, 1)
         self.fig.subplots_adjust(hspace=0)
 
+        # TODO: a partir daqui rever
         # Collecting the data
         self.nFiles = len(self.data_path)
         self.data = pd.read_excel(self.data_path[0])
