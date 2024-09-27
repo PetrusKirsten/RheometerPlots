@@ -88,35 +88,22 @@ class PlotDlg(wx.Dialog):
 
     def custom(self):
         print(f'Opening {plottypes[-1]}')
+        self.txt_sizer = wx.FlexGridSizer(3, 2, 5, 5)
 
-        self.txt_sizer = wx.FlexGridSizer(5, 2, 5, 5)
+        data = General(self.data_path)
 
-        self.txt_peakSize = wx.StaticText(self, -1, 'Stress peak range:')
-        self.ctrl_peakSize = wx.TextCtrl(self, -1, '3', size=self.ctrl_size)
-        self.txt_initStrain = wx.StaticText(self, -1, 'Initial strain linear region:')
-        self.ctrl_initStrain = wx.TextCtrl(self, -1, '10', size=self.ctrl_size)
-        self.txt_finStrain = wx.StaticText(self, -1, 'Final strain linear region:')
-        self.ctrl_finStrain = wx.TextCtrl(self, -1, '18', size=self.ctrl_size)
+        comboAxis = wx.ComboBox(
+            self, -1, size=(-1, -1), choices=General.getCol(data),
+            style=wx.CB_DROPDOWN | wx.CB_READONLY)
+        comboAxis.Enable(False)
+
+        self.txt_nCycles.SetLabel('Series qty. (Max of 2)')
+        self.ctrl_nCycles.SetLabel('0')
 
         self.txt_sizer.AddMany((
-            (self.txt_peakSize, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
-            (self.ctrl_peakSize, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
-            (self.txt_initStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
-            (self.ctrl_initStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
-            (self.txt_finStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
-            (self.ctrl_finStrain, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
+            (self.txt_nCycles, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
         ))
 
-        self.cb_plotPeak = wx.CheckBox(self, -1, 'Highlight peak region.', (10, 10))
-        self.cb_plotYM = wx.CheckBox(self, -1, "Show Young's Modulus linear fit.", (10, 10))
-
-        self.mainPlot_sizer.AddMany((
-            (self.cb_plotPeak, 0, wx.ALL, 10),
-            (self.cb_plotYM, 0, wx.ALL, 10)
-        ))
-
-        self.colorButton1.SetLabel('Stress')
-        self.colorButton2.SetLabel('Fitted curve')
         self.init_gui()
 
     def dynamicFull(self):
@@ -189,6 +176,7 @@ class PlotDlg(wx.Dialog):
         self.init_gui()
 
     def init_gui(self):
+        # Texts and ctrls
         self.txt_sizer.AddMany((
             (self.txt_nCycles, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
             (self.ctrl_nCycles, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5),
@@ -200,6 +188,7 @@ class PlotDlg(wx.Dialog):
             self.txt_sizer, 1,
             wx.EXPAND | wx.ALL, 15)
 
+        # Colors
         self.colorSizer.Add(
             self.colorButton1, 1,
             wx.EXPAND | wx.ALL, 0)
@@ -217,6 +206,7 @@ class PlotDlg(wx.Dialog):
             wx.EXPAND | wx.ALL, 5)
         self.plotButton.Enable(True)
 
+        # main sizer
         self.main_sizer.Add(
             self.mainPlot_sizer, 1,
             wx.EXPAND | wx.ALL, 20)
@@ -295,7 +285,9 @@ class PlotDlg(wx.Dialog):
         if self.title == plottypes[6]:
             print(f'Plotting {self.title}...')
 
-            General.plot()
+            data = General(
+                data_path=self.data_path,
+            )
             # plt.show()
 
     def OnColor1(self, evt):

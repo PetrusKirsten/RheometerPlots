@@ -604,7 +604,10 @@ class Sweep:
         self.fig.subplots_adjust(hspace=0)
 
         # Collecting the data
-        self.data, self.timeTotal, self.timeElement, self.strainStress, self.compViscosity, self.temperature, self.storageModulus, self.storageModulusErr, self.lossModulus, self.lossModulusErr, self.shearStress, self.frequency, self.angVeloc = None, None, None, None, None, None, None, None, None, None, None, None, None
+        self.data, self.timeTotal, self.timeElement, self.strainStress, \
+            self.compViscosity, self.temperature, self.storageModulus, \
+            self.storageModulusErr, self.lossModulus, self.lossModulusErr, \
+            self.shearStress, self.frequency, self.angVeloc = (None,) * 13
 
     def plotStress(
             self,
@@ -920,8 +923,6 @@ class General:
     def __init__(
             self,
             data_path,
-            colorSeries,
-            colorLinRange,
             figure_size=(22, 15),
             dpi=300
     ):
@@ -932,36 +933,21 @@ class General:
         self.figure_size = figure_size
         self.dpi = dpi
 
-        self.fig = plt.figure(self.fileTitle, figsize=(self.figure_size[0] * cm, self.figure_size[1] * cm))
+        self.fig = plt.figure(self.fileTitle, figsize=(self.figure_size[0]*cm, self.figure_size[1]*cm))
         self.gs = GridSpec(1, 1)
         self.fig.subplots_adjust(hspace=0)
 
-        # TODO: a partir daqui rever
         # Collecting the data
         self.nFiles = len(self.data_path)
         self.data = pd.read_excel(self.data_path[0])
+        # store the dataframe's heads label in a dict
 
-        self.head = list(self.data.columns)
-        self.arrays = np.array([])
+        # self.arrays = np.array([])
+        # self.dataLabel = self.getCol()
 
-        ax = self.configPlot('Freq')
-
-        gPrime = gPrime.reshape(
-            nFiles, len(gPrime) // nFiles)
-
-        ax.errorbar(
-            self.angVeloc, self.storageModulus, yerr=self.storageModulusErr,
-            label="G '",
-            c=colorStorage, fmt='o', ms=6, alpha=0.9,
-            ecolor=colorStorage, capthick=1, capsize=3, elinewidth=1)
-        ax.legend(ncol=2, frameon=False)
-        self.fig.tight_layout()  # otherwise the right y-label is slightly clipped
-
-    def getCol(
-            self,
-            columnName=str
-    ):
-        return self.data[columnName].to_numpy()
+    def getCol(self):
+        # return {i: key for i, key in enumerate(list(self.data.columns), 1)}
+        return list(self.data.columns)
 
     def plot(
             self
