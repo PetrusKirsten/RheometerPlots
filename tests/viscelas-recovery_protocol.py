@@ -26,54 +26,52 @@ def fonts(folder_path, small=10, medium=12):  # To config different fonts but it
     plt.rc('figure', titlesize=medium)  # fontsize of the figure title
 
 
+fonts(folder_path='C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
 # Plots configs
 plt.style.use('seaborn-v0_8-ticks')
-# self.gs = GridSpec(1, 1)
-# ax1 = self.fig.add_subplot(self.gs[:, 0])
-# self.fig.suptitle(f'Dynamic compression - Full oscillation '
-#                   f'({self.fileTitle})', alpha=0.9)
+fig, axes = plt.subplots(figsize=(12, 6), facecolor='w', ncols=3)
 
-fonts(folder_path='C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
-fig, axes = plt.subplots(figsize=(12, 6), facecolor='w', ncols=2)
-fig.tight_layout()
-
-# Left axis configs
+# 1st plot configs
 ax1 = axes[0]
-ax1.set_xlabel('Time (s)')
-# ax1.set_xlim([0, 2 * self.nCycles])
-ax1.set_ylabel('Stress (kPa)')
-# ax1.set_ylim([self.stressData.min() - self.stressData.min() * 0.1,
-#               self.stressData.max() + self.stressData.max() * 0.1])
-# ax1.yaxis.set_major_locator(MultipleLocator(0.50))
 ax1.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-# ax1.yaxis.set_minor_locator(MultipleLocator(0.25))
+ax1.set_xticks([])
+ax1.set_yticks([])
 
-# Experimental data
+xFreq = np.linspace(0, 10, 1000)
+yFreq = np.ceil(xFreq)  # np.ceil creates a step effect by rounding up
 
+# Generate frequency values (log scale for realistic behavior)
+xMod = np.logspace(-1, 2, 6)  # Frequencies from 0.1 to 100 (rad/s)
+# Simulate Storage Modulus (Elastic Modulus) as a function of frequency
+yStoMod = 2 + 200 * np.log10(xMod)  # Increases logarithmically with frequency
+# Simulate Loss Modulus as a function of frequency
+yLosMod = 2 * xMod / (1 + xMod ** 2)  # Peaks at intermediate frequencies
+# TODO: arrumar dados do módulo elástico
+ax1.plot(xFreq, yFreq,
+         color='g', lw=1.5,
+         label='Frequency')
 
-# Right plot
-ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-ax2.spines['left'].set_color('r')
-ax2.spines['right'].set_color('r')
-# ax2.set_xlim([0, 2 * self.nCycles])
+(ax1.scatter(xMod, yStoMod,
+             color='r', lw=1.5,
+             label='Storage and Loss moduli'))
 
-ax2.set_ylabel('Strain (%)', color='r')
-ax2.tick_params(axis='y', labelcolor='r', colors='r')
+ax1.legend(loc=4, frameon=False)
+
+# 2nd plot configs
+ax2 = axes[1]
 ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-# ax2.set_ylim([self.heightData.min() - self.heightData.min() * 0.1,
-#               self.heightData.max() + self.heightData.max() * 0.1])
-# ax2.yaxis.set_major_locator(MultipleLocator(0.5))
+ax2.set_xticks([])
+ax2.set_xlabel('Time (s)')
+ax2.set_yticks([])
 
-ax1.set_ylabel('Stress (kPa)', color='b')
-ax1.tick_params(axis='y', labelcolor='b', colors='b')
+# 3rd plot configs
+ax3 = axes[2]
+ax3.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+ax3.set_xticks([])
+ax3.set_yticks([])
 
-# Experimental data
-
-axes[1].legend(loc=4, frameon=False)
-# plt.subplots_adjust(wspace=0, top=0.85, bottom=0.1, left=0.18, right=0.95)
-plt.subplots_adjust(wspace=0, bottom=0.1, left=0.2)
-
-filename = 'plot_sfe'
-plt.tight_layout()
+# ax2.legend(loc=4, frameon=False)
+plt.subplots_adjust(wspace=0.0, top=0.95, bottom=0.1, left=0.05, right=0.95)
 plt.show()
+filename = 'plot_sfe'
 # plt.savefig(filename + '.png', facecolor='w', dpi=300)
