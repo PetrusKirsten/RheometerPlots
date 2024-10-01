@@ -26,9 +26,10 @@ def fonts(folder_path, small=10, medium=12):  # To config different fonts but it
     plt.rc('figure', titlesize=medium)  # fontsize of the figure title
 
 
-def formsPLot(row, col, titles):
+def formsPLot(row, col, titles, paneColor, edgeColor):
     fonts(folder_path='C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
     ax = axs[row, col]
+
     ax.set_proj_type('ortho')
     ax.view_init(elev=13, azim=20, roll=0)
     if r < 1:
@@ -47,9 +48,16 @@ def formsPLot(row, col, titles):
     ax.set_yticklabels(['0% WSt', '5% WSt', '10% WSt'], rotation=30)
     ax.set_zlim([0, 1.25])
     ax.set_zticks([0, 0.5, 1.0])
-    ax.set_zticklabels(['0% kCar', '5.0% kCar', '1.0% kCar'], rotation=40)
+    ax.set_zticklabels(['0% kCar', '0.5% kCar', '1.0% kCar'], rotation=40)
+    ax.xaxis.set_pane_color(paneColor)
+    ax.yaxis.set_pane_color(paneColor)
+    ax.zaxis.set_pane_color(paneColor)
+    ax.xaxis.pane.set_edgecolor(edgeColor)
+    ax.yaxis.pane.set_edgecolor(edgeColor)
+    ax.zaxis.pane.set_edgecolor(edgeColor)
+
     if r > 0:
-        ax.set_zticklabels(['0% iCar', '5.0% iCar', '1.0% iCar'], rotation=40)
+        ax.set_zticklabels(['0% iCar', '0.5% iCar', '1.0% iCar'], rotation=40)
     ax.grid(False)
     edgeColor = 'k'
     ax.scatter(x[:2], y[:2], z[:2],
@@ -57,6 +65,7 @@ def formsPLot(row, col, titles):
                edgecolors=edgeColor, linewidths=0.75,
                zorder=4)
     for i, j, k, h in zip(x[:2], y[:2], z[:2], z2[:2]):
+
         ax.plot([i, i], [j, j], [k, h],
                 color='slategrey', alpha=0.9, lw=1.25,
                 zorder=1)
@@ -105,20 +114,9 @@ def formsPLot(row, col, titles):
         ax.plot([i, i], [j, j], [k, h],
                 color='chocolate', alpha=0.8, lw=1.25,
                 zorder=1)
-
     ax.invert_xaxis()
     # ax.invert_yaxis()
     # ax.invert_zaxis()
-    paneColor = 'floralwhite'
-    edgeColor = 'k'
-    if r > 0:
-        paneColor = 'mintcream'
-    ax.xaxis.set_pane_color(paneColor)
-    ax.yaxis.set_pane_color(paneColor)
-    ax.zaxis.set_pane_color(paneColor)
-    ax.xaxis.pane.set_edgecolor(edgeColor)
-    ax.yaxis.pane.set_edgecolor(edgeColor)
-    ax.zaxis.pane.set_edgecolor(edgeColor)
 
 
 cm = 1 / 2.54  # centimeters in inches
@@ -170,8 +168,14 @@ fig.subplots_adjust(left=left, bottom=bottom, right=right, top=top, wspace=wspac
 t = ['Native wheat starch.', 'Modified wheat starch by 1 h DHT.', 'Modified wheat starch by 2 h DHT.']  # columns title
 for r in range(0, rows):
     for c in range(0, cols):
-        formsPLot(r, c, t)
-        formsPLot(r, c, t)
+        p, e = ((0.9607843137254902, 0.8705882352941177, 0.7019607843137254, 0.2+0.1*c),
+                (0.9607843137254902, 0.8705882352941177, 0.7019607843137254, 0.6+0.1*c))
+        if r > 0:
+            p, e = ((0.6901960784313725, 0.8784313725490196, 0.9019607843137255, 0.2+0.1*c),
+                    (0.6901960784313725, 0.8784313725490196, 0.9019607843137255, 0.6+0.1*c))
+        formsPLot(r, c, t, p, e)
+        # formsPLot(r, c, t, p, 'k')
+
 fig.suptitle(f'Hydrogels formulations. '
              f'Total: {len(formulas0mM) * rows * cols + len(formulas14mM) * rows * cols}.', fontsize=13)
 plt.show()
