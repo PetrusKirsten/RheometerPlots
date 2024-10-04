@@ -26,14 +26,14 @@ def genThixo(n=20, b=2, p=2.5, d=0.5):
     return series
 
 
-def genShearStress(shear_rate, k=1, n=0.5):
+def genShearStress(shearRate, k=1, n=0.5):
     """Calculates shear stress for pseudoplastic material using power law: τ = k * g^n."""
-    return k * (shear_rate ** n)
+    return k * (shearRate ** n)
 
 
 def plotFreqSweep(
-        ax, x_values, y_values, baseValue, marker_size,
-        title, text_properties, text_label, text_coord, rect_properties,
+        ax, x, y, base, markerSize,
+        title, textConfig, textLabel, textCoord, rectConfig,
         tickRight=False):
     """Plots the Oscillatory Frequency Sweep Assay."""
     ax.set_title(title, size=10)
@@ -42,51 +42,51 @@ def plotFreqSweep(
     ax.set_xlim([-3, 10.5])
 
     ax.set_yticks([1, 10])
-    ax.tick_params(axis='y', colors='dodgerblue')
-    ax.set_yticklabels(['$0.1\,Hz$', '$100\,Hz$'], size=9.5, color='dodgerblue')
+    ax.tick_params(axis='y', colors='mediumaquamarine')
+    ax.set_yticklabels(['$0.1\,Hz$', '$100\,Hz$'], size=9.5, color='mediumseagreen')
     ax.set_ylim([0, 10.5])
     if tickRight:
         ax.yaxis.tick_right()
         ax.yaxis.set_label_position('right')
 
-    ax.plot(x_values, y_values, color='dodgerblue', lw=1.25, alpha=0.85, label='ω', zorder=1)
-    ax.scatter(*genStoMod(baseValue, 10), lw=.5, c='aquamarine', edgecolor='k', s=marker_size, marker='v', label="G'", zorder=2)
-    ax.scatter(*genLosMod(baseValue - 1, 10), lw=.5, c='mediumaquamarine', edgecolor='k', s=marker_size, marker='^', label='G"', zorder=2)
+    ax.plot(x, y, color='mediumaquamarine', lw=1.25, alpha=0.85, label='ω', zorder=1)
+    ax.scatter(*genStoMod(base, 10), lw=.5, c='dodgerblue', edgecolor='k', s=markerSize, marker='v', label="G'", zorder=2)
+    ax.scatter(*genLosMod(base - 1, 10), lw=.5, c='lightskyblue', edgecolor='k', s=markerSize, marker='^', label='G"', zorder=2)
 
-    ax.text(text_coord[0], text_coord[1], s=text_label, **text_properties)
-    rect = Rectangle(*rect_properties, linewidth=1, edgecolor='k', facecolor='whitesmoke', alpha=0.75, zorder=1)
+    ax.text(textCoord[0], textCoord[1], s=textLabel, **textConfig)
+    rect = Rectangle(*rectConfig, linewidth=1, edgecolor='k', facecolor='whitesmoke', alpha=0.75, zorder=1)
     ax.add_patch(rect)
 
-    ax.grid(ls='--', color='dodgerblue', alpha=0.5, zorder=0)
+    ax.grid(ls='--', color='mediumaquamarine', alpha=0.5, zorder=0)
     legendLabel(ax)
 
 
-def genStoMod(baseValue, nPoints=10):
+def genStoMod(base, n=10):
     """Generates G' modulus data for the plots."""
-    xMod = np.linspace(0, 10, nPoints + 1)
-    initialPoints = baseValue + np.random.uniform(-0.2, 0.1, nPoints - 4)
+    xMod = np.linspace(0, 10, n + 1)
+    initialPoints = base + np.random.uniform(-0.2, 0.1, n - 4)
     yStoMod = np.concatenate([
-        [baseValue, baseValue],  # Os primeiros 2 pontos paralelos ao eixo X
+        [base, base],  # Os primeiros 2 pontos paralelos ao eixo X
         initialPoints,  # Pontos ligeiramente variáveis
-        [baseValue - 0.5, baseValue - 1, baseValue - 2]  # Últimos pontos suavemente decrescendo
+        [base - 0.5, base - 1, base - 2]  # Últimos pontos suavemente decrescendo
     ])
     return xMod, yStoMod
 
 
-def genLosMod(baseValue, nPoints=10):
+def genLosMod(base, n=10):
     """Generates G" modulus data for the plots."""
-    xMod = np.linspace(0, 10, nPoints + 1)
-    baseValue = baseValue / 1.5
-    initialPoints = baseValue + np.random.uniform(-0.1, 0.1, nPoints - 4)
+    xMod = np.linspace(0, 10, n + 1)
+    base = base / 1.5
+    initialPoints = base + np.random.uniform(-0.1, 0.1, n - 4)
     yLossMod = np.concatenate([
-        [baseValue, baseValue],  # Os primeiros 2 pontos paralelos ao eixo X
+        [base, base],  # Os primeiros 2 pontos paralelos ao eixo X
         initialPoints,  # Pontos ligeiramente variáveis
-        [baseValue + 0.5, baseValue + 1, baseValue + 2]  # Últimos pontos suavemente crescendo
+        [base + 0.5, base + 1, base + 2]  # Últimos pontos suavemente crescendo
     ])
     return xMod, yLossMod
 
 
-def plotShearAssay(ax, x_shear_r, y_shear_r, text_size):
+def plotShearAssay(ax, x, y, textSize):
     """Plots the Flow Shearing Assay."""
     ax.set_title('Flow shearing assay.', size=10)
     ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
@@ -99,15 +99,15 @@ def plotShearAssay(ax, x_shear_r, y_shear_r, text_size):
     y_shear_scte = genThixo()
     x_shear_scte = np.linspace(0, 10, y_shear_scte.shape[0])
     x_shear_rcte = np.linspace(-10, 0, 20)
-    y_shear_rcte = np.full(20, y_shear_r[-1])
-    x_shear_s = np.linspace(x_shear_r[0], 10, 20)
+    y_shear_rcte = np.full(20, y[-1])
+    x_shear_s = np.linspace(x[0], 10, 20)
     y_shear_s = genShearStress(x_shear_s, k=0.65, n=0.5)
 
-    ax.text(x_shear_rcte[len(x_shear_rcte) // 2], 2.9, 'Constant strain rate\n$\dot{γ}=100 \,\,\, s^{-1}$', horizontalalignment='center', verticalalignment='bottom', color='k', size=text_size)
-    ax.text(x_shear_r[len(x_shear_r) // 2], 2.9, 'Decreasing strain rate.\n$100 > \dot{γ} > 0.1 \,\,\, s^{-1}$', horizontalalignment='center', verticalalignment='bottom', color='k', size=text_size)
+    ax.text(x_shear_rcte[len(x_shear_rcte) // 2], 2.9, 'Constant strain rate\n$\dot{γ}=100 \,\,\, s^{-1}$', horizontalalignment='center', verticalalignment='bottom', color='k', size=textSize)
+    ax.text(x[len(x) // 2], 2.9, 'Decreasing strain rate.\n$100 > \dot{γ} > 0.1 \,\,\, s^{-1}$', horizontalalignment='center', verticalalignment='bottom', color='k', size=textSize)
 
     ax.plot(x_shear_rcte, y_shear_rcte, color='orange', lw=1.25, alpha=0.75, zorder=2)
-    ax.plot(-x_shear_r + 10, y_shear_r, color='orange', lw=1.25, alpha=0.75, label='$\dot{γ}$', zorder=2)
+    ax.plot(-x + 10, y, color='orange', lw=1.25, alpha=0.75, label='$\dot{γ}$', zorder=2)
     ax.scatter(x_shear_scte - 10, y_shear_scte, lw=.5, c='hotpink', edgecolor='k', s=30, marker='o', label='σ', zorder=3)
     ax.scatter(x_shear_s, y_shear_s, lw=.5, c='hotpink', edgecolor='k', s=30, marker='o', zorder=3)
     legendLabel(ax)
@@ -147,7 +147,7 @@ def mainPlot(filename):
     yShearRate = np.ceil(xShearRate) / 3.5
     plotShearAssay(
         axes[1], xShearRate, yShearRate,
-        text_size=9.2)
+        textSize=9.2)
 
     # Plot 3: Oscillatory Frequency Sweep Assay Again
     plotFreqSweep(
