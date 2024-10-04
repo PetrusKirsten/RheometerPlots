@@ -785,12 +785,12 @@ class Sweep:
 
             self.timeTotal = self.data['t in s'].to_numpy()
             self.timeElement = self.data['t_seg in s'].to_numpy()
-            self.strainStress = self.data['ɣ in %'].to_numpy()
-            self.compViscosity = self.data['|η*| in mPas'].to_numpy()
-            self.temperature = self.data['T in °C'].to_numpy()
+            self.strainStress = self.data['Gamma in %'].to_numpy()
+            # self.compViscosity = self.data['|η*| in mPas'].to_numpy()
+            # self.temperature = self.data['T in °C'].to_numpy()
 
             if mode == 'Shear Stress':
-                xData = self.data['τ in Pa'].to_numpy()
+                xData = self.data['Tau in Pa'].to_numpy()
             if mode == 'Freq':
                 freq = self.data['f in Hz'].to_numpy()
                 xData = 2 * np.pi * freq
