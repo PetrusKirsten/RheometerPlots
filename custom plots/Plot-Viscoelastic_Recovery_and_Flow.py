@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from matplotlib import pyplot as plt
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Rectangle
@@ -64,11 +65,13 @@ def dataFlow(dataframe):
 
 def plotFreqSweep(
         ax, x, gP, gD, markerSize,
-        title, textConfig, textLabel, textCoord, rectConfig,
-        yFlowLimits, tickRight=False, showRest=False):
+        axTitle, textConfig, textLabel, textCoord, rectConfig,
+        yFlowLimits, tickRight=False, showRest=False
+):
     """Plots the Oscillatory Frequency Sweep Assay."""
     ax2 = None
-    ax.set_title(title, size=10)
+    yFreqLimits = [1, 50000]
+    ax.set_title(axTitle, size=10, color='crimson')
     ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
 
     ax.set_xlabel('Frequency (Hz)')
@@ -79,12 +82,12 @@ def plotFreqSweep(
     if tickRight:
         ax.set_ylabel('Shear stress (Pa)')
         ax.set_ylim(yFlowLimits)
-        ax.set_yscale('log')
+        # ax.set_yscale('log')
 
         ax2 = ax.twinx()
         ax2.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
         ax2.set_ylabel('Storage and loss moduli (Pa)')
-        ax2.set_ylim([1, 20000])
+        ax2.set_ylim(yFreqLimits)
         ax2.set_yscale('log')
         ax2.plot(x[1:], gP[1:], lw=1, alpha=0.85,
                  c='dodgerblue', marker='v', markersize=markerSize / 7, mew=0.5, mec='k',
@@ -92,10 +95,11 @@ def plotFreqSweep(
         ax2.plot(x[1:], gD[1:], lw=1, alpha=0.8,
                  c='lightskyblue', marker='^', markersize=markerSize / 7, mew=0.5, mec='k',
                  label='G"', zorder=2)
+        legendLabel(ax2)
 
     else:
         ax.set_ylabel('Storage and loss moduli (Pa)')
-        ax.set_ylim([1, 20000])
+        ax.set_ylim(yFreqLimits)
         ax.set_yscale('log')
         ax.plot(x[1:], gP[1:], lw=1, alpha=0.85,
                 c='dodgerblue', marker='v', markersize=markerSize / 7, mew=0.5, mec='k',
@@ -113,31 +117,40 @@ def plotFreqSweep(
     legendLabel(ax)
 
 
-def plotFlow(ax, x, y, textSize):
+def plotFlow(
+        ax, x, y,
+        axTitle, textSize
+):
     """Plots the Flow Shearing Assay."""
-    ax.set_title('Flow shearing assay.', size=10)
+    cteShear = 300  # in seg
+    indexCteShear = np.where(x == 300)[0][0]  # find the index where time = final cte shear
+    timeCteShear, timeDecShear = np.split(x, [indexCteShear + 1])
+
+    ax.set_title(axTitle, size=10, color='crimson')
     ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
 
-    ax.set_xlabel('Time (s)')
-    ax.set_xticks([180])
-    ax.set_xticklabels(['180 s'])
+    ax.set_xlabel('Time')
+    ax.set_xticks([cteShear])
+    ax.set_xticklabels([f'{cteShear} s'])
     ax.set_xlim([x[0] - 10, x[-1] + 10])
 
     ax.set_yticks([])
-    yFlowLim = [y.min() - 10, y.max() + 50]
+    yFlowLim = [round((y.min() - 10) / 10) * 10, round((y.max() + 10) / 10) * 10]
+    yFlowLim = [1, 490]
     ax.set_ylim(yFlowLim)
     # ax.set_yscale('log')
 
-    textCoord = (x[29], y.min())
+    # Plot cte strain rate rectangle/line
+    textCoord = (np.median(timeCteShear), 5)
     textLabel = 'Constant strain rate\n$\dot{γ}=300 \,\,\, s^{-1}$'
-    rectConfig = [(x[0] - 100, 0), 280, 100000]
-
+    rectConfig = [(x[0] - cteShear, 0), 2*cteShear, y.max() + 100]
     ax.text(textCoord[0], textCoord[1], textLabel,
             horizontalalignment='center', verticalalignment='bottom', color='k', size=textSize)
-    rect = Rectangle(*rectConfig, linewidth=1, edgecolor='k', facecolor='whitesmoke', alpha=0.75, zorder=1)
+    rect = Rectangle(*rectConfig, linewidth=1, linestyle='--', edgecolor='grey', facecolor='w', alpha=0.7, zorder=1)
     ax.add_patch(rect)
-
-    textCoord = (x[59 + 15 // 2], y.min())
+    # TODO: alterar tamanho das ticklabels e colocar ylim cte em plotFlow
+    # Plot decreasing strain rate text
+    textCoord = (np.median(timeDecShear), 5)
     textLabel = 'Step decrease of strain rate\n$300< \dot{γ} < 0.1 \,\,\, s^{-1}$'
     ax.text(textCoord[0], textCoord[1], textLabel,
             horizontalalignment='center', verticalalignment='bottom', color='k', size=textSize)
@@ -146,7 +159,7 @@ def plotFlow(ax, x, y, textSize):
                lw=.5, c='hotpink', edgecolor='k', s=30, marker='o',
                zorder=3)
     # legendLabel(ax)
-    return yFlowLim
+    return yFlowLim  # to use it in plotFreqSweep function
 
 
 def legendLabel(ax):
@@ -157,14 +170,16 @@ def legendLabel(ax):
 
 
 # Main Plotting Configuration
-def mainPlot(dataPath, filename):
+def mainPlot(dataPath):
     df = pd.read_excel(dataPath)
+    sampleName = Path(filePath).stem
+    dirSave = f'{Path(filePath).parent}' + f'{Path(filePath).stem}' + '.png'
 
-    fonts(folder_path='C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
+    fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
     markerSize = 50
     plt.style.use('seaborn-v0_8-ticks')
     fig, axes = plt.subplots(figsize=(16, 6), facecolor='w', ncols=3)
-    fig.suptitle('Rheometry assay protocol to evaluate viscoelastic recovery.\n\n\n')
+    fig.suptitle(f'Rheometry assay protocol to evaluate viscoelastic recovery | {sampleName}\n\n')
 
     # Common parameters
     text_coord = (0, 100)
@@ -187,7 +202,7 @@ def mainPlot(dataPath, filename):
     timeAx2, rate, stress = dataFlow(df)
     yLim = plotFlow(
         axes[1], timeAx2, stress,
-        textSize=9.2)
+        axTitle='Shear flow assay.', textSize=9.2)
 
     # Plot 3: Oscillatory Frequency Sweep Assay Again
     timeAx3, storage, loss = dataFreqSweep(df, True)
@@ -198,11 +213,14 @@ def mainPlot(dataPath, filename):
         yFlowLimits=yLim, tickRight=True, showRest=False)
 
     plt.subplots_adjust(wspace=0.0, top=0.890, bottom=0.14, left=0.05, right=0.95)
-    # fig.savefig(f'{filename}.png', facecolor='w', dpi=600)
+    fig.savefig(dirSave, facecolor='w', dpi=600)
     plt.show()
 
 
 # Run the main plotting function
-filePath = ('C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data/031024/10pct_0WSt/10pct_0WSt'
-            '-RecoveryAndFlow_1.xlsx')
-mainPlot(filePath, 'viscoelastic-recovery_protocol')
+# filePath = ('C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data/031024/10pct_0WSt/10pct_0WSt'
+#             '-RecoveryAndFlow_1.xlsx') -> CEBB PC
+filePath = ('C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data/031024/10pct_0WSt/10pct_0WSt'
+            '-RecoveryAndFlow_2.xlsx')  # personal PC
+
+mainPlot(dataPath=filePath)
