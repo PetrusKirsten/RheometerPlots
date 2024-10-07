@@ -219,6 +219,8 @@ def mainPlot(dataPath):
     samplesValues = getSamplesValues(dataPath, 2, 3)
     samplesQuantities = list(samplesValues.keys())
 
+    # TODO: calcular médias, std dev, definir variávies e plotar
+    
     sampleName = Path(filePath).stem
     dirSave = f'{Path(filePath).parent}' + f'{Path(filePath).stem}' + '.png'
     fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
@@ -228,7 +230,6 @@ def mainPlot(dataPath):
     fig.suptitle(f'Rheometry assay protocol to evaluate viscoelastic recovery')
 
     #  Plot 10% WSt
-
     plotFlow(
         axes, rateWSt, stressWSt,
         axTitle='', textSize=9.2, curveColor='orange',
