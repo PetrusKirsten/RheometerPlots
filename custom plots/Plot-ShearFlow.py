@@ -124,13 +124,19 @@ def getSamplesValues(dataPath, nSamplesWSt, nSamplesWStICar):
         else:
             _, indRateWStICar, indStressWStICar = dataFlow(df)
 
-            rateWStICarCte, rateWStICarDec = (np.append(rateWStICarCte, indRateWStICar[0]),
-                                              np.append(rateWStICarDec, indRateWStICar[1]))
+            if sample == 3:
+                rateWStICarCte, rateWStICarDec = (np.append(rateWStICarCte, indRateWStICar[0][::2]),
+                                                  np.append(rateWStICarDec, indRateWStICar[1][::2]))
 
-            stressWStICarCte, stressWStICarDec = (np.append(stressWStICarCte, indStressWStICar[0]),
-                                                  np.append(stressWStICarDec, indStressWStICar[1]))
+                stressWStICarCte, stressWStICarDec = (np.append(stressWStICarCte, indStressWStICar[0][::2]),
+                                                      np.append(stressWStICarDec, indStressWStICar[1][::2]))
+            else:
+                rateWStICarCte, rateWStICarDec = (np.append(rateWStICarCte, indRateWStICar[0]),
+                                                  np.append(rateWStICarDec, indRateWStICar[1]))
 
-    # Armazenar os resultados no dicionário final
+                stressWStICarCte, stressWStICarDec = (np.append(stressWStICarCte, indStressWStICar[0]),
+                                                      np.append(stressWStICarDec, indStressWStICar[1]))
+
     # Cte shear rate data
     #   Pure starch
     (dictCteRate['rateWStCte'],
@@ -140,10 +146,9 @@ def getSamplesValues(dataPath, nSamplesWSt, nSamplesWStICar):
                                                               stressWStCte.shape[0] // nSamplesWSt))
     #   Starch + iCar
     (dictCteRate['rateWStICarCte'],
-     dictCteRate['stressWStICarCte']) = (rateWStICarCte[2:].reshape(nSamplesWStICar,
-                                                                    rateWStICarCte[2:].shape[0] // nSamplesWStICar),
-                                         stressWStICarCte[2:].reshape(nSamplesWStICar,
-                                                                      stressWStICarCte[2:].shape[0] // nSamplesWStICar))
+     dictCteRate['stressWStICarCte']) = (
+    rateWStICarCte.reshape(nSamplesWStICar, rateWStICarCte.shape[0] // nSamplesWStICar),
+    stressWStICarCte.reshape(nSamplesWStICar, stressWStICarCte.shape[0] // nSamplesWStICar))
 
     # Decreasing shear rate data
     #   Pure starch
@@ -183,24 +188,23 @@ def dataFlow(dataframe):
 
 def plotFlow(
         ax, x, y, yErr,
-        axTitle, textSize, curveColor,
-        sampleName,
+        axTitle, curveColor, sampleName,
+        logScale=False,
         yFlowLim=(0, 600)
 
 ):
     """Plots the Flow Shearing Assay."""
     ax.set_title(axTitle, size=9, color='crimson')
     ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-
     ax.set_xlabel('Shear rate ($s^{-1}$)')
+    ax.set_xscale('log' if logScale else 'linear')
     # ax.set_xticks([cteShear])
     # ax.set_xticklabels([f'{cteShear} s'])
     ax.set_xlim([-25, +325])
-
     ax.set_ylabel('Shear stress (Pa)')
+    ax.set_yscale('log' if logScale else 'linear')
     ax.set_ylim(yFlowLim)
     # ax.set_yticks([])
-    # ax.set_yscale('log')
     # Plot cte strain rate rectangle/line
     # textCoord, textLabel = ((np.median(timeCteShear), 5),
     #                         'Constant strain rate\n$\dot{γ}=300 \,\,\, s^{-1}$')
@@ -218,11 +222,18 @@ def plotFlow(
     #         horizontalalignment='center', verticalalignment='bottom',
     #         color='k', size=textSize)
 
-    # Plot data
+    ax.fill_between(
+        (np.array(x, dtype=float)), (np.array(y, dtype=float) - yErr), (np.array(y, dtype=float) + yErr),
+        color=curveColor, alpha=0.075,
+        zorder=1)
+    # label=f'{sampleName} - Desvio Padrão', zorder=1)
+
     ax.errorbar(
-        x, y, yerr=yErr, alpha=0.9, lw=.75, linestyle='-',
-        color=curveColor, mec='k', fmt='o', markersize=6,
-        label=sampleName, zorder=3, capsize=3)
+        x, y, yerr=0, color=curveColor, alpha=1,
+        fmt='o', markersize=7, mec='k', mew=0.5,
+        capsize=3, lw=1, linestyle='-',  # ecolor='k'
+        label=sampleName, zorder=3)
+
     legendLabel(ax)
 
 
@@ -244,7 +255,7 @@ def mainPlot(dataPath):
 
     plt.style.use('seaborn-v0_8-ticks')
     fig, axes = plt.subplots(figsize=(8, 6), facecolor='w', ncols=1)
-    fig.suptitle(f'Rheometry assay protocol to evaluate viscoelastic recovery')
+    fig.suptitle(f'Shear flow')
 
     #  Plot 10% WSt
     xWSt, yWSt, yWStErr = (np.mean(decreasingShear['rateWStDec'], axis=0),
@@ -252,7 +263,7 @@ def mainPlot(dataPath):
                            np.std(decreasingShear['stressWStDec'].astype(float), axis=0))
     plotFlow(
         axes, xWSt, yWSt, yWStErr,
-        axTitle='', textSize=9.2, curveColor='orange',
+        axTitle='', curveColor='orange',
         sampleName='10%_0WSt')
 
     #  Plot 10% WSt + iCar  # TODO: consertar o nro de pontos na amostra 10%_0WSt_iCar_3
@@ -262,7 +273,7 @@ def mainPlot(dataPath):
                                           np.std(decreasingShear['stressWStICarDec'].astype(float), axis=0))
     plotFlow(
         axes, xWSt_iCar, yWSt_iCar, yWStErr_iCar,
-        axTitle='', textSize=9.2, curveColor='dodgerblue',
+        axTitle='', curveColor='dodgerblue',
         sampleName='10%_0WSt_iCar')
 
     plt.tight_layout()
