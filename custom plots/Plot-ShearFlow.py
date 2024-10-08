@@ -28,6 +28,10 @@ def fonts(folder_path, s=11, m=13):
     plt.rc('legend', fontsize=s)  # legend fontsize
     plt.rc('figure', titlesize=m)  # fontsize of the figure title
 
+# TODO: fazer função para fitar modelo de HB
+def powerLaw(sigma, k, n, sigmaZero):
+    return k * (sigma ** n) + sigmaZero
+
 
 def constantMean(values, tolerance=100):
     """
