@@ -28,6 +28,7 @@ def fonts(folder_path, s=11, m=13):
     plt.rc('legend', fontsize=s)  # legend fontsize
     plt.rc('figure', titlesize=m)  # fontsize of the figure title
 
+
 # TODO: fazer função para fitar modelo de HB
 def powerLaw(sigma, k, n, sigmaZero):
     return k * (sigma ** n) + sigmaZero
@@ -105,29 +106,23 @@ def getSamplesValues(dataPath, nSamplesWSt, nSamplesWStICar):
     Retorno:
     - dictCteRate (dict): Dicionário com as variáveis resultantes organizadas por diretório.
     """
-    # Dicionário para armazenar resultados por caminho de arquivo
-    dictCteRate, dictDecRate = {}, {}
+    timeCte = None
+    dictCteRate, dictDecRate = {}, {}  # Dicionário para armazenar resultados por caminho de arquivo
     rateWStCte, rateWStDec, stressWStCte, stressWStDec = None, None, None, None
     rateWStICarCte, rateWStICarDec, stressWStICarCte, stressWStICarDec = None, None, None, None
 
-    # Iterar sobre cada caminho fornecido
     for sample, path in enumerate(dataPath):
-        # Ler o DataFrame do arquivo
         df = pd.read_excel(path)
 
-        # Processar os dados para calcular as métricas (rate e stress)
         if sample < nSamplesWSt:
-            _, indRateWSt, indStressWSt = dataFlow(df)
-
+            timeCte, indRateWSt, indStressWSt = dataFlow(df)
             rateWStCte, rateWStDec = (np.append(rateWStCte, indRateWSt[0]),
                                       np.append(rateWStDec, indRateWSt[1]))
-
             stressWStCte, stressWStDec = (np.append(stressWStCte, indStressWSt[0]),
                                           np.append(stressWStDec, indStressWSt[1]))
 
         else:
             _, indRateWStICar, indStressWStICar = dataFlow(df)
-
             if sample == 3:
                 rateWStICarCte, rateWStICarDec = (np.append(rateWStICarCte, indRateWStICar[0][::2]),
                                                   np.append(rateWStICarDec, indRateWStICar[1][::2]))
@@ -137,38 +132,33 @@ def getSamplesValues(dataPath, nSamplesWSt, nSamplesWStICar):
             else:
                 rateWStICarCte, rateWStICarDec = (np.append(rateWStICarCte, indRateWStICar[0]),
                                                   np.append(rateWStICarDec, indRateWStICar[1]))
-
                 stressWStICarCte, stressWStICarDec = (np.append(stressWStICarCte, indStressWStICar[0]),
                                                       np.append(stressWStICarDec, indStressWStICar[1]))
 
     # Cte shear rate data
     #   Pure starch
     (dictCteRate['rateWStCte'],
-     dictCteRate['stressWStCte']) = (rateWStCte[1:].reshape(nSamplesWSt,
-                                                            rateWStCte.shape[0] // nSamplesWSt),
-                                     stressWStCte[1:].reshape(nSamplesWSt,
-                                                              stressWStCte.shape[0] // nSamplesWSt))
+     dictCteRate['stressWStCte']) = (
+        rateWStCte[1:].reshape(nSamplesWSt, rateWStCte.shape[0] // nSamplesWSt),
+        stressWStCte[1:].reshape(nSamplesWSt, stressWStCte.shape[0] // nSamplesWSt))
     #   Starch + iCar
     (dictCteRate['rateWStICarCte'],
      dictCteRate['stressWStICarCte']) = (
-    rateWStICarCte.reshape(nSamplesWStICar, rateWStICarCte.shape[0] // nSamplesWStICar),
-    stressWStICarCte.reshape(nSamplesWStICar, stressWStICarCte.shape[0] // nSamplesWStICar))
-
+        rateWStICarCte.reshape(nSamplesWStICar, rateWStICarCte.shape[0] // nSamplesWStICar),
+        stressWStICarCte.reshape(nSamplesWStICar, stressWStICarCte.shape[0] // nSamplesWStICar))
     # Decreasing shear rate data
     #   Pure starch
     (dictDecRate['rateWStDec'],
-     dictDecRate['stressWStDec']) = (rateWStDec[1:].reshape(nSamplesWSt,
-                                                            rateWStDec.shape[0] // nSamplesWSt),
-                                     stressWStDec[1:].reshape(nSamplesWSt,
-                                                              stressWStDec.shape[0] // nSamplesWSt))
+     dictDecRate['stressWStDec']) = (
+        rateWStDec[1:].reshape(nSamplesWSt, rateWStDec.shape[0] // nSamplesWSt),
+        stressWStDec[1:].reshape(nSamplesWSt, stressWStDec.shape[0] // nSamplesWSt))
     #   Starch + iCar
     (dictDecRate['rateWStICarDec'],
-     dictDecRate['stressWStICarDec']) = (rateWStICarDec[1:].reshape(nSamplesWStICar,
-                                                                    rateWStICarDec.shape[0] // nSamplesWStICar),
-                                         stressWStICarDec[1:].reshape(nSamplesWStICar,
-                                                                      stressWStICarDec.shape[0] // nSamplesWStICar))
+     dictDecRate['stressWStICarDec']) = (
+        rateWStICarDec[1:].reshape(nSamplesWStICar, rateWStICarDec.shape[0] // nSamplesWStICar),
+        stressWStICarDec[1:].reshape(nSamplesWStICar, stressWStICarDec.shape[0] // nSamplesWStICar))
 
-    return dictCteRate, dictDecRate
+    return timeCte, dictCteRate, dictDecRate
 
 
 def dataFlow(dataframe):
@@ -197,7 +187,6 @@ def plotFlow(
         yFlowLim=(0, 600)
 
 ):
-    """Plots the Flow Shearing Assay."""
     ax.set_title(axTitle, size=9, color='crimson')
     ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
     ax.set_xlabel('Shear rate ($s^{-1}$)')
@@ -226,12 +215,12 @@ def plotFlow(
     #         horizontalalignment='center', verticalalignment='bottom',
     #         color='k', size=textSize)
 
-    ax.fill_between(
-        (np.array(x, dtype=float)), (np.array(y, dtype=float) - yErr), (np.array(y, dtype=float) + yErr),
-        color=curveColor, alpha=0.075,
-        zorder=1)
+    # ax.fill_between(
+    #     (np.array(x, dtype=float)), (np.array(y, dtype=float) - yErr), (np.array(y, dtype=float) + yErr),
+    #     color=curveColor, alpha=0.075,
+    #     zorder=1)
     # label=f'{sampleName} - Desvio Padrão', zorder=1)
-
+    # TODO: consertar x e y não estão com mesmo tamanho. Ver se pode ser algum erro na obtenção ou definição das vars
     ax.errorbar(
         x, y, yerr=0, color=curveColor, alpha=1,
         fmt='o', markersize=7, mec='k', mew=0.5,
@@ -248,40 +237,59 @@ def legendLabel(ax):
     legend.get_frame().set_edgecolor('whitesmoke')
 
 
-# Main Plotting Configuration
-def mainPlot(dataPath):
-    constantShear, decreasingShear = getSamplesValues(dataPath, 2, 3)
+def mainPlot(dataPath, plotMode):
+    fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
     # samplesQuantities = list(samplesValues.keys())
 
     fileName = '10pct_0WSt_and_iCar-stressXshear_031024'
     dirSave = f'{Path(filePath[0]).parent}' + f'\\{fileName}' + '.png'
-    fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
 
     plt.style.use('seaborn-v0_8-ticks')
     fig, axes = plt.subplots(figsize=(8, 6), facecolor='w', ncols=1)
     fig.suptitle(f'Shear flow')
 
-    #  Plot 10% WSt
-    xWSt, yWSt, yWStErr = (np.mean(decreasingShear['rateWStDec'], axis=0),
-                           np.mean(decreasingShear['stressWStDec'], axis=0),
-                           np.std(decreasingShear['stressWStDec'].astype(float), axis=0))
-    plotFlow(
-        axes, xWSt, yWSt, yWStErr,
-        axTitle='', curveColor='orange',
-        sampleName='10%_0WSt')
+    time, constantShear, decreasingShear = getSamplesValues(dataPath, 2, 3)
 
-    #  Plot 10% WSt + iCar  # TODO: consertar o nro de pontos na amostra 10%_0WSt_iCar_3
+    # try:
+    if plotMode == 'css':
+        yWSt, yWStErr, yWSt_iCar, yWStErr_iCar = (
+            np.mean(constantShear['stressWStCte'].astype(float), axis=0),
+            np.std(constantShear['stressWStCte'].astype(float), axis=0),
+            np.mean(constantShear['stressWStICarCte'].astype(float), axis=0),
+            np.std(constantShear['stressWStICarCte'].astype(float), axis=0))
 
-    xWSt_iCar, yWSt_iCar, yWStErr_iCar = (np.mean(decreasingShear['rateWStICarDec'], axis=0),
-                                          np.mean(decreasingShear['stressWStICarDec'], axis=0),
-                                          np.std(decreasingShear['stressWStICarDec'].astype(float), axis=0))
-    plotFlow(
-        axes, xWSt_iCar, yWSt_iCar, yWStErr_iCar,
-        axTitle='', curveColor='dodgerblue',
-        sampleName='10%_0WSt_iCar')
+        plotFlow(
+            axes, time[0], yWSt, yWStErr,
+            axTitle='', curveColor='orange',
+            sampleName='10%_0WSt')
+        plotFlow(
+            axes, time[0], yWSt_iCar, yWStErr_iCar,
+            axTitle='', curveColor='dodgerblue',
+            sampleName='10%_0WSt_iCar')
 
-    plt.tight_layout()
+    elif plotMode == 'vss':
+        xWSt, yWSt, yWStErr, xWSt_iCar, yWSt_iCar, yWStErr_iCar = (
+            np.mean(decreasingShear['rateWStDec'].astype(float), axis=0),
+            np.mean(decreasingShear['stressWStDec'].astype(float), axis=0),
+            np.std(decreasingShear['stressWStDec'].astype(float), axis=0),
+            np.mean(decreasingShear['rateWStICarDec'].astype(float), axis=0),
+            np.mean(decreasingShear['stressWStICarDec'].astype(float), axis=0),
+            np.std(decreasingShear['stressWStICarDec'].astype(float), axis=0))
+
+        plotFlow(
+            axes, xWSt, yWSt, yWStErr,
+            axTitle='', curveColor='orange',
+            sampleName='10%_0WSt')
+        plotFlow(
+            axes, xWSt_iCar, yWSt_iCar, yWStErr_iCar,
+            axTitle='', curveColor='dodgerblue',
+            sampleName='10%_0WSt_iCar')
+
+    # except TypeError:
+    #     return 'plotMode must be "css": constante steady shear, or "vss" varying steady shear.'
+
     # plt.subplots_adjust(wspace=0.175, top=0.890, bottom=0.14, left=0.05, right=0.95)
+    plt.tight_layout()
     fig.savefig(dirSave, facecolor='w', dpi=600)
     plt.show()
 
@@ -305,4 +313,7 @@ filePath = [  # Pure WSt
 # filePath = ('C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data/031024/10pct_0WSt/10pct_0WSt'
 #             '-RecoveryAndFlow_2.xlsx')  # personal PC
 
-mainPlot(dataPath=filePath)
+mainPlot(
+    dataPath=filePath,
+    plotMode='css'
+)
