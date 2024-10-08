@@ -215,12 +215,13 @@ def plotFlow(
     #         horizontalalignment='center', verticalalignment='bottom',
     #         color='k', size=textSize)
 
-    # ax.fill_between(
-    #     (np.array(x, dtype=float)), (np.array(y, dtype=float) - yErr), (np.array(y, dtype=float) + yErr),
-    #     color=curveColor, alpha=0.075,
-    #     zorder=1)
-    # label=f'{sampleName} - Desvio Padrão', zorder=1)
-    # TODO: consertar x e y não estão com mesmo tamanho. Ver se pode ser algum erro na obtenção ou definição das vars
+    ax.fill_between(
+        (np.array(x, dtype=float)), (np.array(y, dtype=float) - yErr), (np.array(y, dtype=float) + yErr),
+        color=curveColor, alpha=0.075,
+        zorder=1)
+    # label=f'{sampleName} - Desvio Padrão', zorder=1) TODO: consertar x e y não estão com mesmo tamanho. Ver se pode
+    #  ser algum erro na obtenção ou definição das vars. Fazer um novo código pois cada amostra tem um valor de tempo
+    #  para o shear rate cte
     ax.errorbar(
         x, y, yerr=0, color=curveColor, alpha=1,
         fmt='o', markersize=7, mec='k', mew=0.5,
@@ -315,5 +316,5 @@ filePath = [  # Pure WSt
 
 mainPlot(
     dataPath=filePath,
-    plotMode='css'
+    plotMode='vss'
 )
