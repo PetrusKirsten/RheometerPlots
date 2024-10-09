@@ -4,6 +4,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Rectangle
+from scipy.optimize import curve_fit
 
 
 def fonts(folder_path, s=11, m=13):
@@ -31,7 +32,7 @@ def fonts(folder_path, s=11, m=13):
 
 # TODO: fazer função para fitar modelo de HB
 def powerLaw(sigma, k, n, sigmaZero):
-    return k * (sigma ** n) + sigmaZero
+    return sigmaZero + k * (sigma ** n)
 
 
 def constantMean(values, tolerance=100):
@@ -109,8 +110,8 @@ def getSamplesValues(dataPath, nSt, nIc):
     st_time_cte, ic_time_cte = None, None
     dict_cteRate, dict_stepsRate = {}, {}  # Dicionário para armazenar resultados por caminho de arquivo
 
-    st_time, st_rateCte, st_rateSteps, st_stressCte, st_stressSteps = 5 * (None,)
-    ic_time, ic_rateCte, ic_rateSteps, ic_stressCte, ic_stressSteps = 5 * (None,)
+    st_time, st_rateCte, st_rateSteps, st_stressCte, st_stressSteps = [], [], [], [], []
+    ic_time, ic_rateCte, ic_rateSteps, ic_stressCte, ic_stressSteps = [], [], [], [], []
 
     vars_WSt = ('st_rateCte', 'st_rateSteps', 'st_stressCte', 'st_stressSteps')
     vars_iCar = ('ic_rateCte', 'ic_rateSteps', 'ic_stressCte', 'ic_stressSteps')
@@ -121,63 +122,48 @@ def getSamplesValues(dataPath, nSt, nIc):
         if sample < nSt:
             st_time_i, st_rate_i, st_stress_i = dataFlow(df)
 
-            st_time, st_rateCte, st_rateSteps = (
-                np.append(st_time, st_time_i[0]),
-                np.append(st_rateCte, st_rate_i[0]),
-                np.append(st_rateSteps, st_rate_i[1]))
+            st_time.append(st_time_i[0])
+            st_rateCte.append(st_rate_i[0])
+            st_rateSteps.append(st_rate_i[1])
 
-            st_stressCte, st_stressSteps = (
-                np.append(st_stressCte, st_stress_i[0]),
-                np.append(st_stressSteps, st_stress_i[1]))
+            st_stressCte.append(st_stress_i[0])
+            st_stressSteps.append(st_stress_i[1])
 
         else:
             ic_time_i, ic_rate_i, ic_stress_i = dataFlow(df)
 
             if sample == 3:
-                ic_time, ic_rateCte, ic_rateSteps = (
-                    np.append(ic_time, ic_time_i[0][::2]),
-                    np.append(ic_rateCte, ic_rate_i[0][::2]),
-                    np.append(ic_rateSteps, ic_rate_i[1][::2]))
+                ic_time.append(ic_time_i[0][::2])
+                ic_rateCte.append(ic_rate_i[0][::2])
+                ic_rateSteps.append(ic_rate_i[1][::2])
 
-                ic_stressCte, ic_stressSteps = (
-                    np.append(ic_stressCte, ic_stress_i[0][::2]),
-                    np.append(ic_stressSteps, ic_stress_i[1][::2]))
+                ic_stressCte.append(ic_stress_i[0][::2])
+                ic_stressSteps.append(ic_stress_i[1][::2])
             else:
-                ic_time, ic_rateCte, ic_rateSteps = (
-                    np.append(ic_time, ic_time_i[0]),
-                    np.append(ic_rateCte, ic_rate_i[0]),
-                    np.append(ic_rateSteps, ic_rate_i[1]))
+                ic_time.append(ic_time_i[0])
+                ic_rateCte.append(ic_rate_i[0])
+                ic_rateSteps.append(ic_rate_i[1])
 
-                ic_stressCte, ic_stressSteps = (
-                    np.append(ic_stressCte, ic_stress_i[0]),
-                    np.append(ic_stressSteps, ic_stress_i[1]))
+                ic_stressCte.append(ic_stress_i[0])
+                ic_stressSteps.append(ic_stress_i[1])
 
     # Cte shear rate data
     #   Pure starch
-    dict_cteRate[f'st_time'] = st_time[1:].reshape(
-        nSt, st_time.shape[0] // nSt)
-    dict_cteRate[f'{vars_WSt[0]}'] = st_rateCte[1:].reshape(
-        nSt, st_rateCte.shape[0] // nSt)
-    dict_cteRate[f'{vars_WSt[2]}'] = st_stressCte[1:].reshape(
-        nSt, st_stressCte.shape[0] // nSt)
+    dict_cteRate[f'st_time'] = st_time
+    dict_cteRate[f'{vars_WSt[0]}'] = st_rateCte
+    dict_cteRate[f'{vars_WSt[2]}'] = st_stressCte
 
-    dict_stepsRate[f'{vars_WSt[1]}'] = st_rateSteps[1:].reshape(
-        nSt, st_rateSteps.shape[0] // nSt)
-    dict_stepsRate[f'{vars_WSt[3]}'] = st_stressSteps[1:].reshape(
-        nSt, st_stressSteps.shape[0] // nSt)
+    dict_stepsRate[f'{vars_WSt[1]}'] = st_rateSteps
+    dict_stepsRate[f'{vars_WSt[3]}'] = st_stressSteps
 
     #   Starch + iCar
-    dict_cteRate[f'ic_time'] = ic_time.reshape(
-        nIc, ic_time.shape[0] // nIc)
-    dict_cteRate[f'{vars_iCar[0]}'] = ic_rateCte.reshape(
-        nIc, ic_rateCte.shape[0] // nIc)
-    dict_cteRate[f'{vars_iCar[2]}'] = ic_stressCte.reshape(
-        nIc, ic_stressCte.shape[0] // nIc)
+    dict_cteRate[f'ic_time'] = ic_time
 
-    dict_stepsRate[f'{vars_iCar[1]}'] = ic_rateSteps[1:].reshape(
-        nIc, ic_rateSteps.shape[0] // nIc)
-    dict_stepsRate[f'{vars_iCar[3]}'] = ic_stressSteps[1:].reshape(
-        nIc, ic_stressSteps.shape[0] // nIc)
+    dict_cteRate[f'{vars_iCar[0]}'] = ic_rateCte
+    dict_cteRate[f'{vars_iCar[2]}'] = ic_stressCte
+
+    dict_stepsRate[f'{vars_iCar[1]}'] = ic_rateSteps
+    dict_stepsRate[f'{vars_iCar[3]}'] = ic_stressSteps
 
     return vars_WSt, vars_iCar, dict_cteRate, dict_stepsRate
 
@@ -205,12 +191,13 @@ def plotFlow(
         ax, x, y, yErr,
         axTitle, curveColor, sampleName,
         logScale=False,
-        yFlowLim=(180, 580)):
+        fit=False,
+        yFlowLim=(125, 475)):
     ax.set_title(axTitle, size=9, color='crimson')
     ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
     ax.set_xlabel('Time (s)')
     ax.set_xscale('log' if logScale else 'linear')
-    ax.set_xlim([-40, +800])
+    ax.set_xlim([-30, +850])
     # ax.set_xticks([cteShear])
     # ax.set_xticklabels([f'{cteShear} s'])
     ax.set_ylabel('Shear stress (Pa)')
@@ -239,11 +226,17 @@ def plotFlow(
     #     color=curveColor, alpha=0.075,
     #     zorder=1)
     # label=f'{sampleName} - Desvio Padrão', zorder=1)
-    ax.errorbar(
-        x, y, yerr=0, color=curveColor, alpha=1,
-        fmt='o', markersize=7, mec='k', mew=0.5,
-        capsize=3, lw=1, linestyle='',  # ecolor='k'
-        label=sampleName, zorder=3)
+    if fit:
+        ax.plot(
+            x, y, color=curveColor, linestyle='-', linewidth=1,
+            label=sampleName, zorder=2
+        )
+    else:
+        ax.errorbar(
+            x, y, yerr=0, color=curveColor, alpha=1,
+            fmt='o', markersize=7, mec='k', mew=0.5,
+            capsize=3, lw=1, linestyle='',  # ecolor='k'
+            label=sampleName, zorder=3)
 
     legendLabel(ax)
 
@@ -263,7 +256,7 @@ def main(dataPath):
     dirSave = f'{Path(filePath[0]).parent}' + f'\\{fileName}' + '.png'
 
     plt.style.use('seaborn-v0_8-ticks')
-    fig, axes = plt.subplots(figsize=(8, 6), facecolor='w', ncols=1)
+    fig, axes = plt.subplots(figsize=(10, 6), facecolor='w', ncols=1)
     fig.suptitle(f'Shear flow')
 
     st_names, ic_names, constantShear, stepsShear = getSamplesValues(dataPath, 2, 3)
@@ -274,25 +267,59 @@ def main(dataPath):
     #     #
     #     np.mean(constantShear['ic_stressCte'].astype(float), axis=0),
     #     np.std(constantShear['ic_stressCte'].astype(float), axis=0))
-
-    x_st, y_st, x_ic, y_ic = (
-        constantShear['st_time'].astype(float).tolist(),
-        constantShear['st_stressCte'].astype(float).tolist(),
+    x_st = [np.array([0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48,
+                      51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96,
+                      99, 102, 105, 108, 111, 114, 117, 120, 123, 126, 129, 132, 135,
+                      138, 141, 144, 147, 150, 153, 156, 159, 162, 165, 168, 171, 174,
+                      177]),
+            np.array([0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45,
+                      48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96, 99, 102, 105,
+                      108, 111, 114, 117, 120, 123, 126, 129, 132, 135, 138, 141, 144,
+                      147, 150, 153, 156, 159, 162, 165, 168, 171, 174, 177, 180, 183,
+                      186, 189, 192, 195, 198, 201, 204, 207, 210, 213, 216, 219, 222,
+                      225, 228, 231, 234, 237, 240, 240, 250, 250, 250, 260, 260, 260,
+                      260, 270, 270, 270, 280, 280, 280, 290, 290, 290, 290, 300])]
+    y_st = [None, None]
+    y_st[0], y_st[1], x_ic, y_ic = (
+        constantShear['st_stressCte'][0],
+        constantShear['st_stressCte'][1],
         #
-        constantShear['ic_time'].astype(float).tolist(),
-        constantShear['ic_stressCte'].astype(float).tolist())
+        constantShear['ic_time'],
+        constantShear['ic_stressCte'])
 
-    for curve in range(len(x_st)):
+    for curve in range(1):
+        params, _ = curve_fit(powerLaw, x_st[curve], y_st[curve], p0=(2, 1, 0))
+        K, n, sigma_zero = params
+        x_fit = np.linspace(0, 600, 600)
+        y_fit = powerLaw(x_fit, K, n, sigma_zero)
+
         plotFlow(
-            axes, x_st[curve], y_st[curve], yErr=0,
+            axes, x_fit.tolist(), y_fit.tolist(), yErr=0,
             axTitle='', curveColor='orange',
-            sampleName=f'10%_0WSt_{curve+1}')
-
-    for curve in range(len(x_ic)):
+            sampleName=f'Fit 10%_0WSt_{curve + 1} | '
+                       f'$K = {params[0]:.2f}, n = {params[1]:.2f}, \sigma_0 = {params[2]:.1f}$',
+            fit=True)
         plotFlow(
-            axes, x_ic[curve], y_ic[curve], yErr=0,
+            axes, x_st[curve].tolist(), y_st[curve], yErr=0,
+            axTitle='', curveColor='orange',
+            sampleName=f'10%_0WSt_{curve + 1}')
+
+    for curve in range(2):
+        params, _ = curve_fit(powerLaw, x_ic[curve], y_ic[curve])
+        K, n, sigma_zero = params
+        x_fit = np.linspace(0, 600, 600)
+        y_fit = powerLaw(x_fit, K, n, sigma_zero)
+
+        plotFlow(
+            axes, x_fit.tolist(), y_fit.tolist(), yErr=0,
             axTitle='', curveColor='dodgerblue',
-            sampleName=f'10%_0WSt_iCar_{curve+1}')
+            sampleName=f'Fit 10%_0WSt_iCar_{curve + 1} | '
+                       f'$K = {params[0]:.2f}, n = {params[1]:.2f}, \sigma_0 = {params[2]:.1f}$',
+            fit=True)
+        plotFlow(
+            axes, x_ic[curve].tolist(), y_ic[curve], yErr=0,
+            axTitle='', curveColor='dodgerblue',
+            sampleName=f'10%_0WSt_iCar_{curve + 1}')
 
     # plt.subplots_adjust(wspace=0.175, top=0.890, bottom=0.14, left=0.05, right=0.95)
     plt.tight_layout()
