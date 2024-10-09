@@ -94,7 +94,7 @@ def columnRead(dataframe, key):
     return dataframe[key].to_numpy()
 
 
-def getSamplesValues(dataPath, nSamplesWSt, nSamplesWStICar):
+def getSamplesValues(dataPath, nSt, nIc):
     """
     Processa dados de múltiplos caminhos fornecidos e armazena os resultados em um dicionário.
 
@@ -104,61 +104,82 @@ def getSamplesValues(dataPath, nSamplesWSt, nSamplesWStICar):
     - nSamplesWStICar (int): Número de amostras para o segundo conjunto de dados.
 
     Retorno:
-    - dictCteRate (dict): Dicionário com as variáveis resultantes organizadas por diretório.
+    - dict_cteRate (dict): Dicionário com as variáveis resultantes organizadas por diretório.
     """
-    timeCte = None
-    dictCteRate, dictDecRate = {}, {}  # Dicionário para armazenar resultados por caminho de arquivo
-    rateWStCte, rateWStDec, stressWStCte, stressWStDec = None, None, None, None
-    rateWStICarCte, rateWStICarDec, stressWStICarCte, stressWStICarDec = None, None, None, None
+    st_time_cte, ic_time_cte = None, None
+    dict_cteRate, dict_stepsRate = {}, {}  # Dicionário para armazenar resultados por caminho de arquivo
+
+    st_time, st_rateCte, st_rateSteps, st_stressCte, st_stressSteps = 5 * (None,)
+    ic_time, ic_rateCte, ic_rateSteps, ic_stressCte, ic_stressSteps = 5 * (None,)
+
+    vars_WSt = ('st_rateCte', 'st_rateSteps', 'st_stressCte', 'st_stressSteps')
+    vars_iCar = ('ic_rateCte', 'ic_rateSteps', 'ic_stressCte', 'ic_stressSteps')
 
     for sample, path in enumerate(dataPath):
         df = pd.read_excel(path)
 
-        if sample < nSamplesWSt:
-            timeCte, indRateWSt, indStressWSt = dataFlow(df)
-            rateWStCte, rateWStDec = (np.append(rateWStCte, indRateWSt[0]),
-                                      np.append(rateWStDec, indRateWSt[1]))
-            stressWStCte, stressWStDec = (np.append(stressWStCte, indStressWSt[0]),
-                                          np.append(stressWStDec, indStressWSt[1]))
+        if sample < nSt:
+            st_time_i, st_rate_i, st_stress_i = dataFlow(df)
+
+            st_time, st_rateCte, st_rateSteps = (
+                np.append(st_time, st_time_i[0]),
+                np.append(st_rateCte, st_rate_i[0]),
+                np.append(st_rateSteps, st_rate_i[1]))
+
+            st_stressCte, st_stressSteps = (
+                np.append(st_stressCte, st_stress_i[0]),
+                np.append(st_stressSteps, st_stress_i[1]))
 
         else:
-            _, indRateWStICar, indStressWStICar = dataFlow(df)
-            if sample == 3:
-                rateWStICarCte, rateWStICarDec = (np.append(rateWStICarCte, indRateWStICar[0][::2]),
-                                                  np.append(rateWStICarDec, indRateWStICar[1][::2]))
+            ic_time_i, ic_rate_i, ic_stress_i = dataFlow(df)
 
-                stressWStICarCte, stressWStICarDec = (np.append(stressWStICarCte, indStressWStICar[0][::2]),
-                                                      np.append(stressWStICarDec, indStressWStICar[1][::2]))
+            if sample == 3:
+                ic_time, ic_rateCte, ic_rateSteps = (
+                    np.append(ic_time, ic_time_i[0][::2]),
+                    np.append(ic_rateCte, ic_rate_i[0][::2]),
+                    np.append(ic_rateSteps, ic_rate_i[1][::2]))
+
+                ic_stressCte, ic_stressSteps = (
+                    np.append(ic_stressCte, ic_stress_i[0][::2]),
+                    np.append(ic_stressSteps, ic_stress_i[1][::2]))
             else:
-                rateWStICarCte, rateWStICarDec = (np.append(rateWStICarCte, indRateWStICar[0]),
-                                                  np.append(rateWStICarDec, indRateWStICar[1]))
-                stressWStICarCte, stressWStICarDec = (np.append(stressWStICarCte, indStressWStICar[0]),
-                                                      np.append(stressWStICarDec, indStressWStICar[1]))
+                ic_time, ic_rateCte, ic_rateSteps = (
+                    np.append(ic_time, ic_time_i[0]),
+                    np.append(ic_rateCte, ic_rate_i[0]),
+                    np.append(ic_rateSteps, ic_rate_i[1]))
+
+                ic_stressCte, ic_stressSteps = (
+                    np.append(ic_stressCte, ic_stress_i[0]),
+                    np.append(ic_stressSteps, ic_stress_i[1]))
 
     # Cte shear rate data
     #   Pure starch
-    (dictCteRate['rateWStCte'],
-     dictCteRate['stressWStCte']) = (
-        rateWStCte[1:].reshape(nSamplesWSt, rateWStCte.shape[0] // nSamplesWSt),
-        stressWStCte[1:].reshape(nSamplesWSt, stressWStCte.shape[0] // nSamplesWSt))
-    #   Starch + iCar
-    (dictCteRate['rateWStICarCte'],
-     dictCteRate['stressWStICarCte']) = (
-        rateWStICarCte.reshape(nSamplesWStICar, rateWStICarCte.shape[0] // nSamplesWStICar),
-        stressWStICarCte.reshape(nSamplesWStICar, stressWStICarCte.shape[0] // nSamplesWStICar))
-    # Decreasing shear rate data
-    #   Pure starch
-    (dictDecRate['rateWStDec'],
-     dictDecRate['stressWStDec']) = (
-        rateWStDec[1:].reshape(nSamplesWSt, rateWStDec.shape[0] // nSamplesWSt),
-        stressWStDec[1:].reshape(nSamplesWSt, stressWStDec.shape[0] // nSamplesWSt))
-    #   Starch + iCar
-    (dictDecRate['rateWStICarDec'],
-     dictDecRate['stressWStICarDec']) = (
-        rateWStICarDec[1:].reshape(nSamplesWStICar, rateWStICarDec.shape[0] // nSamplesWStICar),
-        stressWStICarDec[1:].reshape(nSamplesWStICar, stressWStICarDec.shape[0] // nSamplesWStICar))
+    dict_cteRate[f'st_time'] = st_time[1:].reshape(
+        nSt, st_time.shape[0] // nSt)
+    dict_cteRate[f'{vars_WSt[0]}'] = st_rateCte[1:].reshape(
+        nSt, st_rateCte.shape[0] // nSt)
+    dict_cteRate[f'{vars_WSt[2]}'] = st_stressCte[1:].reshape(
+        nSt, st_stressCte.shape[0] // nSt)
 
-    return timeCte, dictCteRate, dictDecRate
+    dict_stepsRate[f'{vars_WSt[1]}'] = st_rateSteps[1:].reshape(
+        nSt, st_rateSteps.shape[0] // nSt)
+    dict_stepsRate[f'{vars_WSt[3]}'] = st_stressSteps[1:].reshape(
+        nSt, st_stressSteps.shape[0] // nSt)
+
+    #   Starch + iCar
+    dict_cteRate[f'ic_time'] = ic_time.reshape(
+        nIc, ic_time.shape[0] // nIc)
+    dict_cteRate[f'{vars_iCar[0]}'] = ic_rateCte.reshape(
+        nIc, ic_rateCte.shape[0] // nIc)
+    dict_cteRate[f'{vars_iCar[2]}'] = ic_stressCte.reshape(
+        nIc, ic_stressCte.shape[0] // nIc)
+
+    dict_stepsRate[f'{vars_iCar[1]}'] = ic_rateSteps[1:].reshape(
+        nIc, ic_rateSteps.shape[0] // nIc)
+    dict_stepsRate[f'{vars_iCar[3]}'] = ic_stressSteps[1:].reshape(
+        nIc, ic_stressSteps.shape[0] // nIc)
+
+    return vars_WSt, vars_iCar, dict_cteRate, dict_stepsRate
 
 
 def dataFlow(dataframe):
@@ -167,33 +188,31 @@ def dataFlow(dataframe):
         columnRead(dataframe, "GP in 1/s"),
         columnRead(dataframe, "Tau in Pa"))
 
-    indexSeg3, indexSeg4, indexSeg5 = (dataframe.index[dataframe['Seg'] == '3-1'].to_list()[0],
-                                       dataframe.index[dataframe['Seg'] == '4-1'].to_list()[0],
-                                       dataframe.index[dataframe['Seg'] == '5-1'].to_list()[0])
+    seg3, seg4, seg5 = (dataframe.index[dataframe['Seg'] == '3-1'].to_list()[0],
+                        dataframe.index[dataframe['Seg'] == '4-1'].to_list()[0],
+                        dataframe.index[dataframe['Seg'] == '5-1'].to_list()[0])
 
-    timeCte, timeDecrease = time[indexSeg3:indexSeg4], time[indexSeg4:indexSeg5]
-    shearRateCte, shearRateDecrease = shearRate[indexSeg3:indexSeg4], shearRate[indexSeg4:indexSeg5]
-    shearStressCte, shearStressDecrease = shearStress[indexSeg3:indexSeg4], shearStress[indexSeg4:indexSeg5]
+    tCte, tSteps = time[seg3:seg4], time[seg4:seg5]
+    shearRate_cte, shearRate_steps = shearRate[seg3:seg4], shearRate[seg4:seg5]
+    shearStress_cte, shearStress_steps = shearStress[seg3:seg4], shearStress[seg4:seg5]
 
-    return ([timeCte - timeCte[0], timeDecrease - timeCte[0]],
-            [shearRateCte, shearRateDecrease],
-            [shearStressCte, shearStressDecrease])
+    return ([tCte - tCte[0], tSteps - tCte[0]],
+            [shearRate_cte, shearRate_steps],
+            [shearStress_cte, shearStress_steps])
 
 
 def plotFlow(
         ax, x, y, yErr,
         axTitle, curveColor, sampleName,
         logScale=False,
-        yFlowLim=(0, 600)
-
-):
+        yFlowLim=(180, 580)):
     ax.set_title(axTitle, size=9, color='crimson')
     ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-    ax.set_xlabel('Shear rate ($s^{-1}$)')
+    ax.set_xlabel('Time (s)')
     ax.set_xscale('log' if logScale else 'linear')
+    ax.set_xlim([-40, +800])
     # ax.set_xticks([cteShear])
     # ax.set_xticklabels([f'{cteShear} s'])
-    ax.set_xlim([-25, +325])
     ax.set_ylabel('Shear stress (Pa)')
     ax.set_yscale('log' if logScale else 'linear')
     ax.set_ylim(yFlowLim)
@@ -215,17 +234,15 @@ def plotFlow(
     #         horizontalalignment='center', verticalalignment='bottom',
     #         color='k', size=textSize)
 
-    ax.fill_between(
-        (np.array(x, dtype=float)), (np.array(y, dtype=float) - yErr), (np.array(y, dtype=float) + yErr),
-        color=curveColor, alpha=0.075,
-        zorder=1)
-    # label=f'{sampleName} - Desvio Padrão', zorder=1) TODO: consertar x e y não estão com mesmo tamanho. Ver se pode
-    #  ser algum erro na obtenção ou definição das vars. Fazer um novo código pois cada amostra tem um valor de tempo
-    #  para o shear rate cte
+    # ax.fill_between(
+    #     (np.array(x, dtype=float)), (np.array(y, dtype=float) - yErr), (np.array(y, dtype=float) + yErr),
+    #     color=curveColor, alpha=0.075,
+    #     zorder=1)
+    # label=f'{sampleName} - Desvio Padrão', zorder=1)
     ax.errorbar(
         x, y, yerr=0, color=curveColor, alpha=1,
         fmt='o', markersize=7, mec='k', mew=0.5,
-        capsize=3, lw=1, linestyle='-',  # ecolor='k'
+        capsize=3, lw=1, linestyle='',  # ecolor='k'
         label=sampleName, zorder=3)
 
     legendLabel(ax)
@@ -238,7 +255,7 @@ def legendLabel(ax):
     legend.get_frame().set_edgecolor('whitesmoke')
 
 
-def mainPlot(dataPath, plotMode):
+def main(dataPath):
     fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
     # samplesQuantities = list(samplesValues.keys())
 
@@ -249,45 +266,33 @@ def mainPlot(dataPath, plotMode):
     fig, axes = plt.subplots(figsize=(8, 6), facecolor='w', ncols=1)
     fig.suptitle(f'Shear flow')
 
-    time, constantShear, decreasingShear = getSamplesValues(dataPath, 2, 3)
+    st_names, ic_names, constantShear, stepsShear = getSamplesValues(dataPath, 2, 3)
 
-    # try:
-    if plotMode == 'css':
-        yWSt, yWStErr, yWSt_iCar, yWStErr_iCar = (
-            np.mean(constantShear['stressWStCte'].astype(float), axis=0),
-            np.std(constantShear['stressWStCte'].astype(float), axis=0),
-            np.mean(constantShear['stressWStICarCte'].astype(float), axis=0),
-            np.std(constantShear['stressWStICarCte'].astype(float), axis=0))
+    # y_st, y_stErr, y_ic, y_icErr = (
+    #     np.mean(constantShear['st_stressCte'].astype(float), axis=0),
+    #     np.std(constantShear['st_stressCte'].astype(float), axis=0),
+    #     #
+    #     np.mean(constantShear['ic_stressCte'].astype(float), axis=0),
+    #     np.std(constantShear['ic_stressCte'].astype(float), axis=0))
 
+    x_st, y_st, x_ic, y_ic = (
+        constantShear['st_time'].astype(float).tolist(),
+        constantShear['st_stressCte'].astype(float).tolist(),
+        #
+        constantShear['ic_time'].astype(float).tolist(),
+        constantShear['ic_stressCte'].astype(float).tolist())
+
+    for curve in range(len(x_st)):
         plotFlow(
-            axes, time[0], yWSt, yWStErr,
+            axes, x_st[curve], y_st[curve], yErr=0,
             axTitle='', curveColor='orange',
-            sampleName='10%_0WSt')
+            sampleName=f'10%_0WSt_{curve+1}')
+
+    for curve in range(len(x_ic)):
         plotFlow(
-            axes, time[0], yWSt_iCar, yWStErr_iCar,
+            axes, x_ic[curve], y_ic[curve], yErr=0,
             axTitle='', curveColor='dodgerblue',
-            sampleName='10%_0WSt_iCar')
-
-    elif plotMode == 'vss':
-        xWSt, yWSt, yWStErr, xWSt_iCar, yWSt_iCar, yWStErr_iCar = (
-            np.mean(decreasingShear['rateWStDec'].astype(float), axis=0),
-            np.mean(decreasingShear['stressWStDec'].astype(float), axis=0),
-            np.std(decreasingShear['stressWStDec'].astype(float), axis=0),
-            np.mean(decreasingShear['rateWStICarDec'].astype(float), axis=0),
-            np.mean(decreasingShear['stressWStICarDec'].astype(float), axis=0),
-            np.std(decreasingShear['stressWStICarDec'].astype(float), axis=0))
-
-        plotFlow(
-            axes, xWSt, yWSt, yWStErr,
-            axTitle='', curveColor='orange',
-            sampleName='10%_0WSt')
-        plotFlow(
-            axes, xWSt_iCar, yWSt_iCar, yWStErr_iCar,
-            axTitle='', curveColor='dodgerblue',
-            sampleName='10%_0WSt_iCar')
-
-    # except TypeError:
-    #     return 'plotMode must be "css": constante steady shear, or "vss" varying steady shear.'
+            sampleName=f'10%_0WSt_iCar_{curve+1}')
 
     # plt.subplots_adjust(wspace=0.175, top=0.890, bottom=0.14, left=0.05, right=0.95)
     plt.tight_layout()
@@ -314,7 +319,4 @@ filePath = [  # Pure WSt
 # filePath = ('C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data/031024/10pct_0WSt/10pct_0WSt'
 #             '-RecoveryAndFlow_2.xlsx')  # personal PC
 
-mainPlot(
-    dataPath=filePath,
-    plotMode='vss'
-)
+main(dataPath=filePath)
