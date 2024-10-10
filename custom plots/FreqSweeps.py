@@ -201,7 +201,7 @@ def plotFlowTime(listRows, nSamples,
                  logScale=False):
     def legendLabel():
         """Applies consistent styling to legends in plots."""
-        legend = ax.legend(frameon=True, framealpha=0.9, fancybox=False, scatterpoints=3)
+        legend = ax.legend(fancybox=False, frameon=True, framealpha=0.9, fontsize=9)
         legend.get_frame().set_facecolor('w')
         legend.get_frame().set_edgecolor('whitesmoke')
 
@@ -245,10 +245,10 @@ def plotFlowTime(listRows, nSamples,
             listRows)
 
         print(
-            f'\n{sampleName} thixotropy fit parameters:\n'
+            f'\n· {sampleName} thixotropy fit parameters:\n'
             f'K = {K:.2f} ± {errors[0]:.2f},\n'
             f'n = {n:.2f} ± {errors[1]:.2f},\n'
-            f'sigma_0 = {sigmaZero:.1f} ± {errors[2]:.2f}\n')
+            f'sigma_0 = {sigmaZero:.1f} ± {errors[2]:.2f}.\n')
 
     return listRows
 
@@ -257,8 +257,8 @@ def main(dataPath):
     fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
     # samplesQuantities = list(samplesValues.keys())
 
-    fileName = '10pct_0WSt_and_iCar-Thixotropy_031024'
-    dirSave = f'{Path(filePath[0]).parent}' + f'\\{fileName}' + '.png'
+    fileName = '10pct_0WSt_and_Car-Thixotropy'
+    dirSave = Path(*Path(filePath[0]).parts[:Path(filePath[0]).parts.index('data') + 1])
 
     plt.style.use('seaborn-v0_8-ticks')
     fig, axStress = plt.subplots(figsize=(10, 7), facecolor='w', ncols=1)
@@ -290,29 +290,31 @@ def main(dataPath):
         ax=axStress, x=x_st, y=s_st,
         axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
         curveColor='silver', markerStyle='o',
-        sampleName=f'10%_0WSt')
+        sampleName=f'10_0WSt')
 
     table = plotFlowTime(
         listRows=table, nSamples=ic_nSamples,
         ax=axStress, x=x_ic, y=s_ic,
         axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
         curveColor='deepskyblue', markerStyle='o',
-        sampleName=f'10%_0WSt_iCar')
+        sampleName=f'10_0WSt_iCar')
 
     table = plotFlowTime(
         listRows=table, nSamples=kc_nSamples,
         ax=axStress, x=x_kc, y=s_kc,
         axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
         curveColor='navajowhite', markerStyle='o',
-        sampleName=f'10%_0WSt_kCar')
+        sampleName=f'10_0WSt_kCar')
 
     # plt.subplots_adjust(wspace=0.175, top=0.890, bottom=0.14, left=0.05, right=0.95)
     plt.tight_layout()
     plt.show()
-    # fig.savefig(dirSave, facecolor='w', dpi=600)
+    fig.savefig(f'{dirSave}' + f'\\{fileName}' + '.png', facecolor='w', dpi=600)
 
     fitParams = pd.DataFrame(table)
-    fitParams.to_excel(f'{fileName}_fit.xlsx', index=False)
+    fitParams.to_excel(f'{dirSave}' + f'\\{fileName}' + '.xlsx', index=False)
+
+    print(f'\n\n· Chart and table with fitted parameters saved at\n{dirSave}.')
 
 
 if __name__ == '__main__':
