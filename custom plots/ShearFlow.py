@@ -215,6 +215,10 @@ def main(dataPath):
     # axVisc = axStress.twinx()
     fig.suptitle(f'Shear flow')
 
+    yTitle, yLimits = f'Shear stress (Pa)', (100, 600)
+    xTitle, xLimits = f'Frequency (Hz)', (0.05, 150)
+    st5_color, st10_color, ic_color, kc_color = 'silver', 'sandybrown', 'hotpink', 'mediumturquoise'
+
     st_nSamples, ic_nSamples, kc_nSamples = 2, 3, 2
     constantShear, _ = getSamplesData(dataPath, st_nSamples, ic_nSamples)
 
@@ -238,22 +242,22 @@ def main(dataPath):
     table = plotFlowTime(
         listRows=table, nSamples=st_nSamples,
         ax=axStress, x=x_st, y=s_st,
-        axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
-        curveColor='silver', markerStyle='o',
+        axTitle='', yLabel=yTitle, yLim=yLimits,
+        curveColor=st10_color, markerStyle='o',
         sampleName=f'10_0WSt')
 
     table = plotFlowTime(
         listRows=table, nSamples=ic_nSamples,
         ax=axStress, x=x_ic, y=s_ic,
-        axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
-        curveColor='deepskyblue', markerStyle='o',
+        axTitle='', yLabel=yTitle, yLim=yLimits,
+        curveColor=ic_color, markerStyle='o',
         sampleName=f'10_0WSt_iCar')
 
     table = plotFlowTime(
         listRows=table, nSamples=kc_nSamples,
         ax=axStress, x=x_kc, y=s_kc,
-        axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
-        curveColor='navajowhite', markerStyle='o',
+        axTitle='', yLabel=yTitle, yLim=yLimits,
+        curveColor=kc_color, markerStyle='o',
         sampleName=f'10_0WSt_kCar')
 
     # plt.subplots_adjust(wspace=0.175, top=0.890, bottom=0.14, left=0.05, right=0.95)
