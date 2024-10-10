@@ -30,12 +30,27 @@ def fonts(folder_path, s=11, m=13):
     plt.rc('figure', titlesize=m)  # fontsize of the figure title
 
 
+def exportFit(
+        sample,
+        K, n, sigmaZero, err,
+        rows):
+    data = {
+        'Sample': sample,
+        'K': K, 'K err': err[0],
+        'n': n, 'n err': err[1],
+        'sigmaZero': sigmaZero, 'sigmaZero err': err[2]}
+
+    rows.append(data)
+
+    return rows
+
+
 # TODO: fazer função para fitar modelo de HB
 def powerLaw(sigma, k, n, sigmaZero):
     return sigmaZero + k * (sigma ** n)
 
 
-def constantMean(values, tolerance=100):
+def getCteMean(values, tolerance=100):
     """
     :param values: to be analysed
     :param tolerance: the difference betweem two points data
@@ -70,6 +85,25 @@ def constantMean(values, tolerance=100):
     mean = np.mean(values[iStart:iEnd + 1])  # Calcular a média da região constante encontrada
 
     return mean, iStart, iEnd
+
+
+def columnsRead(dataframe):
+    time, shearRate, shearStress = (
+        dataframe['t in s'].to_numpy(),
+        dataframe["GP in 1/s"].to_numpy(),
+        dataframe["Tau in Pa"].to_numpy())
+
+    seg3, seg4, seg5 = (dataframe.index[dataframe['Seg'] == '3-1'].to_list()[0],
+                        dataframe.index[dataframe['Seg'] == '4-1'].to_list()[0],
+                        dataframe.index[dataframe['Seg'] == '5-1'].to_list()[0])
+
+    tCte, tSteps = time[seg3:seg4], time[seg4:seg5]
+    shearRate_cte, shearRate_steps = shearRate[seg3:seg4], shearRate[seg4:seg5]
+    shearStress_cte, shearStress_steps = shearStress[seg3:seg4], shearStress[seg4:seg5]
+
+    return ([tCte - tCte[0], tSteps - tCte[0]],
+            [shearRate_cte, shearRate_steps],
+            [shearStress_cte, shearStress_steps])
 
 
 def getSamplesData(dataPath, nSt, nIc):
@@ -115,26 +149,7 @@ def getSamplesData(dataPath, nSt, nIc):
     return dict_cteRate, dict_stepsRate
 
 
-def columnsRead(dataframe):
-    time, shearRate, shearStress = (
-        dataframe['t in s'].to_numpy(),
-        dataframe["GP in 1/s"].to_numpy(),
-        dataframe["Tau in Pa"].to_numpy())
-
-    seg3, seg4, seg5 = (dataframe.index[dataframe['Seg'] == '3-1'].to_list()[0],
-                        dataframe.index[dataframe['Seg'] == '4-1'].to_list()[0],
-                        dataframe.index[dataframe['Seg'] == '5-1'].to_list()[0])
-
-    tCte, tSteps = time[seg3:seg4], time[seg4:seg5]
-    shearRate_cte, shearRate_steps = shearRate[seg3:seg4], shearRate[seg4:seg5]
-    shearStress_cte, shearStress_steps = shearStress[seg3:seg4], shearStress[seg4:seg5]
-
-    return ([tCte - tCte[0], tSteps - tCte[0]],
-            [shearRate_cte, shearRate_steps],
-            [shearStress_cte, shearStress_steps])
-
-
-def plotFlow(
+def plotFlowTime(
         ax, x, y, yErr,
         axTitle, curveColor, sampleName,
         logScale=False,
@@ -153,8 +168,7 @@ def plotFlow(
     if fit:
         ax.plot(
             x, y, color=curveColor, linestyle='-', linewidth=1,
-            label=sampleName, zorder=2
-        )
+            label=sampleName, zorder=2)
     else:
         ax.errorbar(
             x, y, yerr=0, color=curveColor, alpha=1,
@@ -176,7 +190,7 @@ def main(dataPath):
     fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
     # samplesQuantities = list(samplesValues.keys())
 
-    fileName = '10pct_0WSt_and_iCar-stressXshear_031024'
+    fileName = '10pct_0WSt_and_iCar-Thixotropy_031024'
     dirSave = f'{Path(filePath[0]).parent}' + f'\\{fileName}' + '.png'
 
     plt.style.use('seaborn-v0_8-ticks')
@@ -191,7 +205,7 @@ def main(dataPath):
         #
         constantShear['ic_time'],
         constantShear['ic_stressCte'])
-
+    tableRows = []
     for curve in range(1):
         st_params, st_covariance = curve_fit(powerLaw, x_st[curve], y_st[curve], p0=(2, 1, 0))
         st_errors = np.sqrt(np.diag(st_covariance))
@@ -199,16 +213,20 @@ def main(dataPath):
         x_fit = np.linspace(0, 600, 600)
         y_fit = powerLaw(x_fit, st_K, st_n, st_sigmaZero)
 
-        plotFlow(
+        plotFlowTime(
             axes, x_fit.tolist(), y_fit.tolist(), yErr=0,
             axTitle='', curveColor='orange',
             sampleName=f'Fit 10%_0WSt_{curve + 1}',
             fit=True)
-        plotFlow(
+        plotFlowTime(
             axes, x_st[curve].tolist(), y_st[curve], yErr=0,
             axTitle='', curveColor='orange',
             sampleName=f'10%_0WSt_{curve + 1}')
 
+        tableRows = exportFit(
+            f'10%_0WSt_{curve + 1}',
+            st_K, st_n, st_sigmaZero, st_errors,
+            tableRows)
         print(
             f'\n10_0WSt thixotropy fit parameters:\n\n'
             f'K = {st_K:.2f} ± {st_errors[0]:.2f},\n'
@@ -222,25 +240,32 @@ def main(dataPath):
         x_fit = np.linspace(0, 600, 600)
         y_fit = powerLaw(x_fit, ic_K, ic_n, ic_sigmaZero)
 
-        plotFlow(
+        plotFlowTime(
             axes, x_fit.tolist(), y_fit.tolist(), yErr=0,
             axTitle='', curveColor='dodgerblue',
             sampleName=f'Fit 10%_0WSt_iCar_{curve + 1}',
             fit=True)
-        plotFlow(
+        plotFlowTime(
             axes, x_ic[curve].tolist(), y_ic[curve], yErr=0,
             axTitle='', curveColor='dodgerblue',
             sampleName=f'10%_0WSt_iCar_{curve + 1}')
 
+        tableRows = exportFit(
+            f'10%_0WSt_iCar_{curve + 1}',
+            ic_K, ic_n, ic_sigmaZero, ic_errors,
+            tableRows)
         print(
             f'\n10_0WSt_iCar_{curve + 1} thixotropy fit parameters:\n\n'
             f'K = {ic_K:.2f} ± {ic_errors[0]:.2f},\n'
             f'n = {ic_n:.2f} ± {ic_errors[1]:.2f},\n'
             f'sigma_0 = {ic_sigmaZero:.1f} ± {ic_errors[2]:.2f}\n')
 
+    fitParams = pd.DataFrame(tableRows)
+    fitParams.to_excel(f'{fileName}_fit.xlsx', index=False)
+
     # plt.subplots_adjust(wspace=0.175, top=0.890, bottom=0.14, left=0.05, right=0.95)
     plt.tight_layout()
-    fig.savefig(dirSave, facecolor='w', dpi=600)
+    # fig.savefig(dirSave, facecolor='w', dpi=600)
     plt.show()
 
 
@@ -263,5 +288,5 @@ filePath = [  # Pure WSt
 
 # filePath = ('C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data/031024/10pct_0WSt/10pct_0WSt'
 #             '-RecoveryAndFlow_2.xlsx')  # personal PC
-
-main(dataPath=filePath)
+if __name__ == '__main__':
+    main(dataPath=filePath)
