@@ -66,216 +66,208 @@ def getCteMean(values, tolerance=100):
     return mean, iStart, iEnd
 
 
-def getSamplesData(dataPath, nSt, nIc):
-    def columnsRead(dataframe):
-        time, shearRate, shearStress, viscosity = (
-            dataframe['t in s'].to_numpy(),
-            dataframe['ɣ̇ in 1/s'].to_numpy(),
-            dataframe['τ in Pa'].to_numpy(),
-            dataframe['η in mPas'].to_numpy())
+def getSamplesData(dataPath, n5st, n10St, nIc, nKc):
+    """
+    Reads multiple sample files and categorizes the data into 'cteRate' and 'stepsRate' dictionaries.
+    """
+    def getSegments(dataframe):
+        """
+        Extracts freq, shear rate, shear stress, and delta segments from the dataframe.
+        Returns tuples of constant and step segments.
+        """
+        freq = dataframe['f in Hz'].to_numpy()
+        elastic = dataframe["G' in Pa"].to_numpy()
+        loss = dataframe['G" in Pa'].to_numpy()
+        delta = dataframe['tan(δ) in -'].to_numpy()
 
-        seg3, seg4, seg5 = (dataframe.index[dataframe['SegIndex'] == '3|1'].to_list()[0],
-                            dataframe.index[dataframe['SegIndex'] == '4|1'].to_list()[0],
-                            dataframe.index[dataframe['SegIndex'] == '5|1'].to_list()[0])
+        # Identifying segments in the data
+        seg2, seg3 = (dataframe.index[dataframe['SegIndex'] == seg].to_list()[0] for seg in ['2|1', '3|1'])
 
-        tCte, tSteps = time[seg3:seg4], time[seg4:seg5]
-        shearRate_cte, shearRate_steps = shearRate[seg3:seg4], shearRate[seg4:seg5]
-        shearStress_cte, shearStress_steps = shearStress[seg3:seg4], shearStress[seg4:seg5]
-        viscosity_cte, viscosity_steps = viscosity[seg3:seg4], viscosity[seg4:seg5]
+        # Slice segments
+        segments = lambda arr: (arr[seg2:seg3])  # Returns (constant segment, step segment)
 
-        return ([tCte - tCte[0], tSteps - tCte[0]],
-                [shearRate_cte, shearRate_steps],
-                [shearStress_cte, shearStress_steps],
-                [viscosity_cte, viscosity_steps])
+        return {
+            'freq': segments(freq),
+            'storage': segments(elastic),
+            'loss': segments(loss),
+            'delta': segments(delta)
+        }
+    # Store data for each sample type
+    samples = {'5_st': [], '10_st': [], 'ic': [], 'kc': []}
 
-    dict_cteRate, dict_stepsRate = {}, {}  # Dicionário para armazenar resultados por caminho de arquivo
-    st_time, st_rateCte, st_rateSteps, st_stressCte, st_stressSteps, st_viscosityCte, st_viscositySteps = [], [], [], [], [], [], []
-    ic_time, ic_rateCte, ic_rateSteps, ic_stressCte, ic_stressSteps, ic_viscosityCte, ic_viscositySteps = [], [], [], [], [], [], []
-    kc_time, kc_rateCte, kc_rateSteps, kc_stressCte, kc_stressSteps, kc_viscosityCte, kc_viscositySteps = [], [], [], [], [], [], []
+    # Determine sample types for each path
+    sample_labels = ['5_st'] * n5st + ['10_st'] * n10St + ['ic'] * nIc + ['kc'] * nKc
 
-    for sample, path in enumerate(dataPath):
+    # Read data and categorize based on sample type
+    for sample_type, path in zip(sample_labels, dataPath):
         df = pd.read_excel(path)
+        segments = getSegments(df)
+        samples[sample_type].append(segments)
 
-        if sample < nSt:
-            st_time_i, st_rate_i, st_stress_i, st_viscosity_i = columnsRead(df)
+    # Initialize dictionaries to hold the results
+    dict_freqSweeps = {}
 
-            st_time.append(st_time_i[0])
+    # Populate dictionaries with consolidated sample data
+    for sample_type in samples:
+        dict_freqSweeps[f'{sample_type}_freq'] = [s['freq'] for s in samples[sample_type]]
+        dict_freqSweeps[f'{sample_type}_storage'] = [s['storage'] for s in samples[sample_type]]
+        dict_freqSweeps[f'{sample_type}_loss'] = [s['loss'] for s in samples[sample_type]]
+        dict_freqSweeps[f'{sample_type}_delta'] = [s['delta'] for s in samples[sample_type]]
 
-            st_rateCte.append(st_rate_i[0])
-            st_rateSteps.append(st_rate_i[1])
-
-            st_stressCte.append(st_stress_i[0])
-            st_stressSteps.append(st_stress_i[1])
-
-            st_viscosityCte.append(st_viscosity_i[0])
-            st_viscositySteps.append(st_viscosity_i[1])
-
-        elif sample < nSt + nIc:
-            ic_time_i, ic_rate_i, ic_stress_i, ic_viscosity_i = columnsRead(df)
-
-            ic_time.append(ic_time_i[0])
-
-            ic_rateCte.append(ic_rate_i[0])
-            ic_rateSteps.append(ic_rate_i[1])
-
-            ic_stressCte.append(ic_stress_i[0])
-            ic_stressSteps.append(ic_stress_i[1])
-
-            ic_viscosityCte.append(ic_viscosity_i[0])
-            ic_viscositySteps.append(ic_viscosity_i[1])
-
-        else:
-            kc_time_i, kc_rate_i, kc_stress_i, kc_viscosity_i = columnsRead(df)
-
-            kc_time.append(kc_time_i[0])
-
-            kc_rateCte.append(kc_rate_i[0])
-            kc_rateSteps.append(kc_rate_i[1])
-
-            kc_stressCte.append(kc_stress_i[0])
-            kc_stressSteps.append(kc_stress_i[1])
-
-            kc_viscosityCte.append(kc_viscosity_i[0])
-            kc_viscositySteps.append(kc_viscosity_i[1])
-
-    # Cte shear rate data
-    #   Pure starch
-    (dict_cteRate[f'st_time'],
-     dict_cteRate[f'st_rateCte'],
-     dict_cteRate[f'st_stressCte'],
-     dict_cteRate[f'st_viscosityCte']) = st_time, st_rateCte, st_stressCte, st_viscosityCte
-
-    (dict_stepsRate[f'st_rateSteps'],
-     dict_stepsRate[f'st_stressSteps'],
-     dict_stepsRate[f'st_viscositySteps']) = st_rateSteps, st_stressSteps, st_viscositySteps
-
-    #   Starch + iCar
-    (dict_cteRate[f'ic_time'],
-     dict_cteRate[f'ic_rateCte'],
-     dict_cteRate[f'ic_stressCte'],
-     dict_cteRate[f'ic_viscosityCte']) = ic_time, ic_rateCte, ic_stressCte, ic_viscosityCte
-
-    (dict_stepsRate[f'ic_rateSteps'],
-     dict_stepsRate[f'ic_stressSteps'],
-     dict_stepsRate[f'ic_viscositySteps']) = ic_rateSteps, ic_stressSteps, ic_viscositySteps
-
-    #   Starch + kCar
-    (dict_cteRate[f'kc_time'],
-     dict_cteRate[f'kc_rateCte'],
-     dict_cteRate[f'kc_stressCte'],
-     dict_cteRate[f'kc_viscosityCte']) = kc_time, kc_rateCte, kc_stressCte, kc_viscosityCte
-
-    (dict_stepsRate[f'kc_rateSteps'],
-     dict_stepsRate[f'kc_stressSteps'],
-     dict_stepsRate[f'kc_viscositySteps']) = kc_rateSteps, kc_stressSteps, kc_viscositySteps
-
-    return dict_cteRate, dict_stepsRate
+    return dict_freqSweeps
 
 
-def plotFreqSweeps(nSamples,
+def plotFreqSweeps(nSamples, sampleName,
                    ax, x, y,
-                   axTitle, yLabel, yLim,
-                   curveColor, markerStyle,
-                   sampleName,
-                   logScale=False):
+                   axTitle, yLabel, yLim, xLabel, xLim,
+                   curveColor, markerStyle, markerFColor, markerEColor, markerEWidth=0.5,
+                   lineStyle='-', individualData=False, logScale=False):
     def legendLabel():
         """Applies consistent styling to legends in plots."""
         legend = ax.legend(fancybox=False, frameon=True, framealpha=0.9, fontsize=9)
         legend.get_frame().set_facecolor('w')
         legend.get_frame().set_edgecolor('whitesmoke')
 
-    def configPlot(idSample):
+    def configPlot(idSample=0):
         ax.set_title(axTitle, size=9, color='crimson')
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
 
-        ax.set_xlabel('Time (s)')
+        ax.set_xlabel(f'{xLabel}')
         ax.set_xscale('log' if logScale else 'linear')
-        ax.set_xlim([-20, +600])
+        ax.set_xlim(xLim)
 
         ax.set_ylabel(f'{yLabel}')
         ax.set_yscale('log' if logScale else 'linear')
         ax.set_ylim(yLim)
 
         ax.errorbar(
-            x[curve][::3], y[curve][::3], yerr=0, color=curveColor, alpha=(0.9 - curve*0.2),
-            fmt=markerStyle, markersize=7, mec='k', mew=0.5,
-            capsize=3, lw=1, linestyle='',  # ecolor='k'
+            x[curve][::3] if individualData else np.mean(x, axis=0)[:-1],
+            y[curve][::3] if individualData else np.mean(y, axis=0)[:-1],
+            yerr=0 if individualData else np.std(y, axis=0)[:-1],
+            color=curveColor, alpha=(0.9 - curve*0.2) if individualData else 1.0,
+            fmt=markerStyle, markersize=7, mfc=markerFColor, mec=markerEColor, mew=markerEWidth,
+            capsize=3, lw=1, linestyle=lineStyle,  # ecolor='k'
             label=f'{sampleName}_{idSample + 1}', zorder=3)
 
         legendLabel()
 
-    for curve in range(nSamples):
-        configPlot(idSample=curve)
+    if individualData:
+        for curve in range(nSamples):
+            configPlot(idSample=curve)
+    else:
+        configPlot()
 
 
 def main(dataPath):
     fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
     # samplesQuantities = list(samplesValues.keys())
 
-    fileName = '10pct_0WSt_and_Car-Thixotropy'
+    fileName = '10pct_0WSt_and_Car-FrequencySweeps'
     dirSave = Path(*Path(filePath[0]).parts[:Path(filePath[0]).parts.index('data') + 1])
 
     plt.style.use('seaborn-v0_8-ticks')
-    fig, axStress = plt.subplots(figsize=(10, 7), facecolor='w', ncols=1)
-    # axVisc = axStress.twinx()
-    fig.suptitle(f'Shear flow')
+    fig, ax = plt.subplots(figsize=(10, 7), facecolor='w', ncols=1)
+    # axVisc = ax.twinx()
+    fig.suptitle(f'Frequency sweeps')
 
-    st_nSamples, ic_nSamples, kc_nSamples = 2, 3, 3
-    constantShear, _ = getSamplesData(dataPath, st_nSamples, ic_nSamples)
+    yTitle, yLimits = f"Storage (G')" + f' and loss (G") moduli' + f' (Pa)', (2, 1*10**5)
+    xTitle, xLimits = f'Frequency (Hz)', (0.05, 200)
+    st5_color, st10_color, ic_color, kc_color = 'wheat', 'darksalmon', 'hotpink', 'mediumturquoise'
+    plotEachSample = False
 
-    (x_st, s_st, v_st,
-     x_ic, s_ic, v_ic,
-     x_kc, s_kc, v_kc) = (
-        constantShear['st_time'],
-        constantShear['st_stressCte'],
-        constantShear['st_viscosityCte'],
+    st5_nSamples, st10_nSamples, ic_nSamples, kc_nSamples = 1, 2, 3, 2
+    data = getSamplesData(dataPath, st5_nSamples, st10_nSamples, ic_nSamples, kc_nSamples)
+
+    (x_5st, gP_5st, gD_5st,
+     x_10st, gP_10st, gD_10st,
+     x_ic, gP_ic, gD_ic,
+     x_kc, gP_kc, gD_kc) = (
+        data['5_st_freq'],
+        data['5_st_storage'],
+        data['5_st_loss'],
         #
-        constantShear['ic_time'],
-        constantShear['ic_stressCte'],
-        constantShear['ic_viscosityCte'],
+        data['10_st_freq'],
+        data['10_st_storage'],
+        data['10_st_loss'],
         #
-        constantShear['kc_time'],
-        constantShear['kc_stressCte'],
-        constantShear['kc_viscosityCte'])
+        data['ic_freq'],
+        data['ic_storage'],
+        data['ic_loss'],
+        #
+        data['kc_freq'],
+        data['kc_storage'],
+        data['kc_loss'])
 
-    table = []
+    plotFreqSweeps(
+        nSamples=st5_nSamples,
+        ax=ax, x=x_5st, y=gP_5st,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+        curveColor=st5_color, markerStyle='o', markerFColor=st5_color, markerEColor='k',
+        sampleName=f'5_0WSt', individualData=plotEachSample, logScale=True)
+    plotFreqSweeps(
+        nSamples=st5_nSamples,
+        ax=ax, x=x_5st, y=gD_5st,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+        curveColor=st5_color, markerStyle='o', markerFColor='w',
+        markerEColor=st5_color, markerEWidth=1.5, lineStyle='--',
+        sampleName=f'', individualData=plotEachSample, logScale=True)
 
-    table = plotFreqSweeps(
-        listRows=table, nSamples=st_nSamples,
-        ax=axStress, x=x_st, y=s_st,
-        axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
-        curveColor='silver', markerStyle='o',
-        sampleName=f'10_0WSt')
+    plotFreqSweeps(
+        nSamples=st10_nSamples,
+        ax=ax, x=x_10st, y=gP_10st,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+        curveColor=st10_color, markerStyle='o', markerFColor=st10_color, markerEColor='k',
+        sampleName=f'10_0WSt', individualData=plotEachSample, logScale=True)
+    plotFreqSweeps(
+        nSamples=st10_nSamples,
+        ax=ax, x=x_10st, y=gD_10st,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+        curveColor=st10_color, markerStyle='o', markerFColor='w',
+        markerEColor=st10_color, markerEWidth=1.5, lineStyle='--',
+        sampleName=f'', individualData=plotEachSample, logScale=True)
 
-    table = plotFreqSweeps(
-        listRows=table, nSamples=ic_nSamples,
-        ax=axStress, x=x_ic, y=s_ic,
-        axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
-        curveColor='deepskyblue', markerStyle='o',
-        sampleName=f'10_0WSt_iCar')
+    plotFreqSweeps(
+        nSamples=ic_nSamples,
+        ax=ax, x=x_ic, y=gP_ic,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+        curveColor=ic_color, markerStyle='o', markerFColor=ic_color, markerEColor='k',
+        sampleName=f'10_0WSt_iCar', individualData=plotEachSample, logScale=True)
+    plotFreqSweeps(
+        nSamples=ic_nSamples,
+        ax=ax, x=x_ic, y=gD_ic,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+        curveColor=ic_color, markerStyle='o', markerFColor='w',
+        markerEColor=ic_color, markerEWidth=1.5, lineStyle='--',
+        sampleName=f'', individualData=plotEachSample, logScale=True)
 
-    table = plotFreqSweeps(
-        listRows=table, nSamples=kc_nSamples,
-        ax=axStress, x=x_kc, y=s_kc,
-        axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
-        curveColor='navajowhite', markerStyle='o',
-        sampleName=f'10_0WSt_kCar')
+    plotFreqSweeps(
+        nSamples=kc_nSamples,
+        ax=ax, x=x_kc, y=gP_kc,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+        curveColor=kc_color, markerStyle='o', markerFColor=kc_color, markerEColor='k',
+        sampleName=f'10_0WSt_kCar', individualData=plotEachSample, logScale=True)
+    plotFreqSweeps(
+        nSamples=kc_nSamples,
+        ax=ax, x=x_kc, y=gD_kc,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+        curveColor=kc_color, markerStyle='o', markerFColor='w',
+        markerEColor=kc_color, markerEWidth=1.5, lineStyle='--',
+        sampleName=f'', individualData=plotEachSample, logScale=True)
 
     # plt.subplots_adjust(wspace=0.175, top=0.890, bottom=0.14, left=0.05, right=0.95)
     plt.tight_layout()
     plt.show()
     fig.savefig(f'{dirSave}' + f'\\{fileName}' + '.png', facecolor='w', dpi=600)
 
-    fitParams = pd.DataFrame(table)
-    fitParams.to_excel(f'{dirSave}' + f'\\{fileName}' + '.xlsx', index=False)
-
-    print(f'\n\n· Chart and table with fitted parameters saved at\n{dirSave}.')
+    print(f'\n\n· Chart saved at\n{dirSave}.')
 
 
 if __name__ == '__main__':
     # folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
     folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
     filePath = [
+        folderPath + "/031024/5_0WSt/5_0WSt-FreqSweep.xlsx",
+        #
         folderPath + "/031024/10_0WSt/10_0WSt-viscRec_1.xlsx",
         folderPath + "/031024/10_0WSt/10_0WSt-viscRec_2.xlsx",
         #
@@ -284,7 +276,7 @@ if __name__ == '__main__':
         folderPath + "/031024/10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_3.xlsx",
         folderPath + "/031024/10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_4.xlsx",
         #
-        folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_2a.xlsx",
+        # folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_2a.xlsx",
         folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_3a.xlsx",
         folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_4a.xlsx",
     ]

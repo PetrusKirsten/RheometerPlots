@@ -215,7 +215,7 @@ def main(dataPath):
     # axVisc = axStress.twinx()
     fig.suptitle(f'Shear flow')
 
-    st_nSamples, ic_nSamples, kc_nSamples = 2, 3, 3
+    st_nSamples, ic_nSamples, kc_nSamples = 2, 3, 2
     constantShear, _ = getSamplesData(dataPath, st_nSamples, ic_nSamples)
 
     (x_st, s_st, v_st,
@@ -281,7 +281,7 @@ if __name__ == '__main__':
         #
         folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_2a.xlsx",
         folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_3a.xlsx",
-        folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_4a.xlsx",
+        # folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_4a.xlsx",
     ]
 
     main(dataPath=filePath)
