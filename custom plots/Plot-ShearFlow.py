@@ -112,6 +112,7 @@ def getSamplesData(dataPath, nSt, nIc):
     dict_cteRate, dict_stepsRate = {}, {}  # Dicionário para armazenar resultados por caminho de arquivo
     st_time, st_rateCte, st_rateSteps, st_stressCte, st_stressSteps, st_viscosityCte, st_viscositySteps = [], [], [], [], [], [], []
     ic_time, ic_rateCte, ic_rateSteps, ic_stressCte, ic_stressSteps, ic_viscosityCte, ic_viscositySteps = [], [], [], [], [], [], []
+    kc_time, kc_rateCte, kc_rateSteps, kc_stressCte, kc_stressSteps, kc_viscosityCte, kc_viscositySteps = [], [], [], [], [], [], []
 
     for sample, path in enumerate(dataPath):
         df = pd.read_excel(path)
@@ -130,7 +131,7 @@ def getSamplesData(dataPath, nSt, nIc):
             st_viscosityCte.append(st_viscosity_i[0])
             st_viscositySteps.append(st_viscosity_i[1])
 
-        else:
+        elif sample < nSt + nIc:
             ic_time_i, ic_rate_i, ic_stress_i, ic_viscosity_i = columnsRead(df)
 
             ic_time.append(ic_time_i[0])
@@ -143,6 +144,20 @@ def getSamplesData(dataPath, nSt, nIc):
 
             ic_viscosityCte.append(ic_viscosity_i[0])
             ic_viscositySteps.append(ic_viscosity_i[1])
+
+        else:
+            kc_time_i, kc_rate_i, kc_stress_i, kc_viscosity_i = columnsRead(df)
+
+            kc_time.append(kc_time_i[0])
+
+            kc_rateCte.append(kc_rate_i[0])
+            kc_rateSteps.append(kc_rate_i[1])
+
+            kc_stressCte.append(kc_stress_i[0])
+            kc_stressSteps.append(kc_stress_i[1])
+
+            kc_viscosityCte.append(kc_viscosity_i[0])
+            kc_viscositySteps.append(kc_viscosity_i[1])
 
     # Cte shear rate data
     #   Pure starch
@@ -164,6 +179,16 @@ def getSamplesData(dataPath, nSt, nIc):
     (dict_stepsRate[f'ic_rateSteps'],
      dict_stepsRate[f'ic_stressSteps'],
      dict_stepsRate[f'ic_viscositySteps']) = ic_rateSteps, ic_stressSteps, ic_viscositySteps
+
+    #   Starch + kCar
+    (dict_cteRate[f'kc_time'],
+     dict_cteRate[f'kc_rateCte'],
+     dict_cteRate[f'kc_stressCte'],
+     dict_cteRate[f'kc_viscosityCte']) = kc_time, kc_rateCte, kc_stressCte, kc_viscosityCte
+
+    (dict_stepsRate[f'kc_rateSteps'],
+     dict_stepsRate[f'kc_stressSteps'],
+     dict_stepsRate[f'kc_viscositySteps']) = kc_rateSteps, kc_stressSteps, kc_viscositySteps
 
     return dict_cteRate, dict_stepsRate
 
@@ -220,14 +245,20 @@ def main(dataPath):
 
     constantShear, _ = getSamplesData(dataPath, 2, 3)
 
-    x_st, s_st, v_st, x_ic, s_ic, v_ic = (
+    (x_st, s_st, v_st,
+     x_ic, s_ic, v_ic,
+     x_kc, s_kc, v_kc) = (
         constantShear['st_time'],
         constantShear['st_stressCte'],
         constantShear['st_viscosityCte'],
         #
         constantShear['ic_time'],
         constantShear['ic_stressCte'],
-        constantShear['ic_viscosityCte'])
+        constantShear['ic_viscosityCte'],
+        #
+        constantShear['kc_time'],
+        constantShear['kc_stressCte'],
+        constantShear['kc_viscosityCte'])
 
     tableRows = []
     for curve in range(2):
@@ -298,6 +329,40 @@ def main(dataPath):
             f'n = {ic_n:.2f} ± {ic_errors[1]:.2f},\n'
             f'sigma_0 = {ic_sigmaZero:.1f} ± {ic_errors[2]:.2f}\n')
 
+    for curve in range(3):
+        kc_params, kc_covariance = curve_fit(powerLaw, x_kc[curve], s_kc[curve])
+        kc_errors = np.sqrt(np.diag(kc_covariance))
+        kc_K, kc_n, kc_sigmaZero = kc_params
+        x_fit = np.linspace(0, 700, 700)
+        y_fit = powerLaw(x_fit, kc_K, kc_n, kc_sigmaZero)
+
+        plotFlowTime(
+            axStress, x_fit.tolist(), y_fit.tolist(),
+            axTitle='', yLabel='', yLim=(100, 600),
+            curveColor='navajowhite', markerStyle=None,
+            sampleName=f'',
+            fit=True)
+        plotFlowTime(
+            axStress, x_kc[curve].tolist(), s_kc[curve],
+            axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
+            curveColor='navajowhite', markerStyle='o',
+            sampleName=f'10%_0WSt_kCar_{curve + 1}')
+        plotFlowTime(
+            axVisc, (x_kc[curve] + 800).tolist(), v_kc[curve],
+            axTitle='', yLabel='Viscosity (mPa·s)', yLim=(400, 2000),
+            curveColor='navajowhite', markerStyle='s',
+            sampleName=f'')
+
+        tableRows = exportFit(
+            f'10%_0WSt_kCar_{curve + 1}',
+            kc_K, kc_n, kc_sigmaZero, kc_errors,
+            tableRows)
+        print(
+            f'\n10_0WSt_iCar_{curve + 1} thixotropy fit parameters:\n'
+            f'K = {kc_K:.2f} ± {kc_errors[0]:.2f},\n'
+            f'n = {kc_n:.2f} ± {kc_errors[1]:.2f},\n'
+            f'sigma_0 = {kc_sigmaZero:.1f} ± {kc_errors[2]:.2f}\n')
+
     fitParams = pd.DataFrame(tableRows)
     fitParams.to_excel(f'{fileName}_fit.xlsx', index=False)
 
@@ -319,6 +384,11 @@ if __name__ == '__main__':
         # folderPath + "10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_1.xlsx",
         folderPath + "/031024/10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_2.xlsx",
         folderPath + "/031024/10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_3.xlsx",
-        folderPath + "/031024/10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_4.xlsx"]
+        folderPath + "/031024/10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_4.xlsx",
+        #
+        folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_2a.xlsx",
+        folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_3a.xlsx",
+        folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_4a.xlsx",
+    ]
 
     main(dataPath=filePath)
