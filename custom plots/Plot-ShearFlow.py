@@ -193,42 +193,64 @@ def getSamplesData(dataPath, nSt, nIc):
     return dict_cteRate, dict_stepsRate
 
 
-def plotFlowTime(
-        ax, x, y,
-        axTitle, yLabel, yLim,
-        curveColor, markerStyle,
-        sampleName,
-        logScale=False,
-        fit=False):
-    ax.set_title(axTitle, size=9, color='crimson')
-    ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-    ax.set_xlabel('Time (s)')
-    ax.set_xscale('log' if logScale else 'linear')
-    ax.set_xlim([-65, +1650])
+def plotFlowTime(listRows, nSamples,
+                 ax, x, y,
+                 axTitle, yLabel, yLim,
+                 curveColor, markerStyle,
+                 sampleName,
+                 logScale=False):
+    def legendLabel():
+        """Applies consistent styling to legends in plots."""
+        legend = ax.legend(frameon=True, framealpha=0.9, fancybox=False, scatterpoints=3)
+        legend.get_frame().set_facecolor('w')
+        legend.get_frame().set_edgecolor('whitesmoke')
 
-    ax.set_ylabel(f'{yLabel}')
-    ax.set_yscale('log' if logScale else 'linear')
-    ax.set_ylim(yLim)
+    def configPlot(fit, idSample):
+        ax.set_title(axTitle, size=9, color='crimson')
+        ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        ax.set_xlabel('Time (s)')
+        ax.set_xscale('log' if logScale else 'linear')
+        ax.set_xlim([-20, +600])
 
-    if fit:
-        ax.plot(
-            x, y, color=curveColor, linestyle=':', linewidth=1,
-            zorder=2)
-    else:
-        ax.errorbar(
-            x[::3], y[::3], yerr=0, color=curveColor, alpha=0.8,
-            fmt=markerStyle, markersize=7, mec='k', mew=0.5,
-            capsize=3, lw=1, linestyle='',  # ecolor='k'
-            label=sampleName, zorder=3)
+        ax.set_ylabel(f'{yLabel}')
+        ax.set_yscale('log' if logScale else 'linear')
+        ax.set_ylim(yLim)
 
-    legendLabel(ax)
+        if fit:
+            ax.plot(
+                x_fit, y_fit, color=curveColor, linestyle=':', linewidth=1,
+                zorder=2)
+        else:
+            ax.errorbar(
+                x[curve][::3], y[curve][::3], yerr=0, color=curveColor, alpha=(0.9 - curve*0.2),
+                fmt=markerStyle, markersize=7, mec='k', mew=0.5,
+                capsize=3, lw=1, linestyle='',  # ecolor='k'
+                label=f'{sampleName}_{idSample + 1}', zorder=3)
 
+        legendLabel()
 
-def legendLabel(ax):
-    """Applies consistent styling to legends in plots."""
-    legend = ax.legend(frameon=True, framealpha=0.9, fancybox=False, scatterpoints=3)
-    legend.get_frame().set_facecolor('w')
-    legend.get_frame().set_edgecolor('whitesmoke')
+    for curve in range(nSamples):
+        params, covariance = curve_fit(powerLaw, x[curve], y[curve], p0=(2, 1, 0))
+        errors = np.sqrt(np.diag(covariance))
+        K, n, sigmaZero = params
+        x_fit = np.linspace(0, 700, 700)
+        y_fit = powerLaw(x_fit, K, n, sigmaZero)
+
+        configPlot(fit=False, idSample=curve)
+        configPlot(fit=True, idSample=curve)
+
+        listRows = exportFit(
+            f'{sampleName}',
+            K, n, sigmaZero, errors,
+            listRows)
+
+        print(
+            f'\n{sampleName} thixotropy fit parameters:\n'
+            f'K = {K:.2f} ± {errors[0]:.2f},\n'
+            f'n = {n:.2f} ± {errors[1]:.2f},\n'
+            f'sigma_0 = {sigmaZero:.1f} ± {errors[2]:.2f}\n')
+
+    return listRows
 
 
 def main(dataPath):
@@ -240,10 +262,11 @@ def main(dataPath):
 
     plt.style.use('seaborn-v0_8-ticks')
     fig, axStress = plt.subplots(figsize=(10, 7), facecolor='w', ncols=1)
-    axVisc = axStress.twinx()
+    # axVisc = axStress.twinx()
     fig.suptitle(f'Shear flow')
 
-    constantShear, _ = getSamplesData(dataPath, 2, 3)
+    st_nSamples, ic_nSamples, kc_nSamples = 2, 3, 3
+    constantShear, _ = getSamplesData(dataPath, st_nSamples, ic_nSamples)
 
     (x_st, s_st, v_st,
      x_ic, s_ic, v_ic,
@@ -260,123 +283,41 @@ def main(dataPath):
         constantShear['kc_stressCte'],
         constantShear['kc_viscosityCte'])
 
-    tableRows = []
-    for curve in range(2):
-        st_params, st_covariance = curve_fit(powerLaw, x_st[curve], s_st[curve], p0=(2, 1, 0))
-        st_errors = np.sqrt(np.diag(st_covariance))
-        st_K, st_n, st_sigmaZero = st_params
-        x_fit = np.linspace(0, 700, 700)
-        y_fit = powerLaw(x_fit, st_K, st_n, st_sigmaZero)
+    table = []
 
-        plotFlowTime(
-            axStress, x_fit.tolist(), y_fit.tolist(),
-            axTitle='', yLabel='', yLim=(100, 600),
-            curveColor='silver', markerStyle=None,
-            sampleName=f'',
-            fit=True)
-        plotFlowTime(
-            axStress, x_st[curve].tolist(), s_st[curve],
-            axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
-            curveColor='silver', markerStyle='o',
-            sampleName=f'10%_0WSt_{curve + 1}')
-        plotFlowTime(
-            axVisc, (x_st[curve] + 800).tolist(), v_st[curve],
-            axTitle='', yLabel='Viscosity (mPa·s)', yLim=(400, 2000),
-            curveColor='silver', markerStyle='s',
-            sampleName=f'')
+    table = plotFlowTime(
+        listRows=table, nSamples=st_nSamples,
+        ax=axStress, x=x_st, y=s_st,
+        axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
+        curveColor='silver', markerStyle='o',
+        sampleName=f'10%_0WSt')
 
-        tableRows = exportFit(
-            f'10%_0WSt_{curve + 1}',
-            st_K, st_n, st_sigmaZero, st_errors,
-            tableRows)
-        print(
-            f'\n10_0WSt thixotropy fit parameters:\n'
-            f'K = {st_K:.2f} ± {st_errors[0]:.2f},\n'
-            f'n = {st_n:.2f} ± {st_errors[1]:.2f},\n'
-            f'sigma_0 = {st_sigmaZero:.1f} ± {st_errors[2]:.2f}\n')
+    table = plotFlowTime(
+        listRows=table, nSamples=ic_nSamples,
+        ax=axStress, x=x_ic, y=s_ic,
+        axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
+        curveColor='deepskyblue', markerStyle='o',
+        sampleName=f'10%_0WSt_iCar')
 
-    for curve in range(3):
-        ic_params, ic_covariance = curve_fit(powerLaw, x_ic[curve], s_ic[curve])
-        ic_errors = np.sqrt(np.diag(ic_covariance))
-        ic_K, ic_n, ic_sigmaZero = ic_params
-        x_fit = np.linspace(0, 700, 700)
-        y_fit = powerLaw(x_fit, ic_K, ic_n, ic_sigmaZero)
-
-        plotFlowTime(
-            axStress, x_fit.tolist(), y_fit.tolist(),
-            axTitle='', yLabel='', yLim=(100, 600),
-            curveColor='deepskyblue', markerStyle=None,
-            sampleName=f'',
-            fit=True)
-        plotFlowTime(
-            axStress, x_ic[curve].tolist(), s_ic[curve],
-            axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
-            curveColor='deepskyblue', markerStyle='o',
-            sampleName=f'10%_0WSt_iCar_{curve + 1}')
-        plotFlowTime(
-            axVisc, (x_ic[curve] + 800).tolist(), v_ic[curve],
-            axTitle='', yLabel='Viscosity (mPa·s)', yLim=(400, 2000),
-            curveColor='deepskyblue', markerStyle='s',
-            sampleName=f'')
-
-        tableRows = exportFit(
-            f'10%_0WSt_iCar_{curve + 1}',
-            ic_K, ic_n, ic_sigmaZero, ic_errors,
-            tableRows)
-        print(
-            f'\n10_0WSt_iCar_{curve + 1} thixotropy fit parameters:\n'
-            f'K = {ic_K:.2f} ± {ic_errors[0]:.2f},\n'
-            f'n = {ic_n:.2f} ± {ic_errors[1]:.2f},\n'
-            f'sigma_0 = {ic_sigmaZero:.1f} ± {ic_errors[2]:.2f}\n')
-
-    for curve in range(3):
-        kc_params, kc_covariance = curve_fit(powerLaw, x_kc[curve], s_kc[curve])
-        kc_errors = np.sqrt(np.diag(kc_covariance))
-        kc_K, kc_n, kc_sigmaZero = kc_params
-        x_fit = np.linspace(0, 700, 700)
-        y_fit = powerLaw(x_fit, kc_K, kc_n, kc_sigmaZero)
-
-        plotFlowTime(
-            axStress, x_fit.tolist(), y_fit.tolist(),
-            axTitle='', yLabel='', yLim=(100, 600),
-            curveColor='navajowhite', markerStyle=None,
-            sampleName=f'',
-            fit=True)
-        plotFlowTime(
-            axStress, x_kc[curve].tolist(), s_kc[curve],
-            axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
-            curveColor='navajowhite', markerStyle='o',
-            sampleName=f'10%_0WSt_kCar_{curve + 1}')
-        plotFlowTime(
-            axVisc, (x_kc[curve] + 800).tolist(), v_kc[curve],
-            axTitle='', yLabel='Viscosity (mPa·s)', yLim=(400, 2000),
-            curveColor='navajowhite', markerStyle='s',
-            sampleName=f'')
-
-        tableRows = exportFit(
-            f'10%_0WSt_kCar_{curve + 1}',
-            kc_K, kc_n, kc_sigmaZero, kc_errors,
-            tableRows)
-        print(
-            f'\n10_0WSt_iCar_{curve + 1} thixotropy fit parameters:\n'
-            f'K = {kc_K:.2f} ± {kc_errors[0]:.2f},\n'
-            f'n = {kc_n:.2f} ± {kc_errors[1]:.2f},\n'
-            f'sigma_0 = {kc_sigmaZero:.1f} ± {kc_errors[2]:.2f}\n')
-
-    fitParams = pd.DataFrame(tableRows)
-    fitParams.to_excel(f'{fileName}_fit.xlsx', index=False)
+    table = plotFlowTime(
+        listRows=table, nSamples=kc_nSamples,
+        ax=axStress, x=x_kc, y=s_kc,
+        axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
+        curveColor='navajowhite', markerStyle='o',
+        sampleName=f'10%_0WSt_kCar')
 
     # plt.subplots_adjust(wspace=0.175, top=0.890, bottom=0.14, left=0.05, right=0.95)
     plt.tight_layout()
-    # fig.savefig(dirSave, facecolor='w', dpi=600)
     plt.show()
+    # fig.savefig(dirSave, facecolor='w', dpi=600)
+
+    fitParams = pd.DataFrame(table)
+    fitParams.to_excel(f'{fileName}_fit.xlsx', index=False)
 
 
 if __name__ == '__main__':
-    # filePath = ('C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data/031024/10pct_0WSt/10pct_0WSt'
-    #             '-RecoveryAndFlow_2.xlsx')  # personal PC
-
-    folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
+    # folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
+    folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
     filePath = [
         folderPath + "/031024/10_0WSt/10_0WSt-viscRec_1.xlsx",
         folderPath + "/031024/10_0WSt/10_0WSt-viscRec_2.xlsx",
