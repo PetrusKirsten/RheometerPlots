@@ -86,109 +86,59 @@ def getCteMean(values, tolerance=100):
     return mean, iStart, iEnd
 
 
-def columnsRead(dataframe):
-    time, shearRate, shearStress, viscosity = (
-        dataframe['t in s'].to_numpy(),
-        dataframe['ɣ̇ in 1/s'].to_numpy(),
-        dataframe['τ in Pa'].to_numpy(),
-        dataframe['η in mPas'].to_numpy())
-
-    seg3, seg4, seg5 = (dataframe.index[dataframe['SegIndex'] == '3|1'].to_list()[0],
-                        dataframe.index[dataframe['SegIndex'] == '4|1'].to_list()[0],
-                        dataframe.index[dataframe['SegIndex'] == '5|1'].to_list()[0])
-
-    tCte, tSteps = time[seg3:seg4], time[seg4:seg5]
-    shearRate_cte, shearRate_steps = shearRate[seg3:seg4], shearRate[seg4:seg5]
-    shearStress_cte, shearStress_steps = shearStress[seg3:seg4], shearStress[seg4:seg5]
-    viscosity_cte, viscosity_steps = viscosity[seg3:seg4], viscosity[seg4:seg5]
-
-    return ([tCte - tCte[0], tSteps - tCte[0]],
-            [shearRate_cte, shearRate_steps],
-            [shearStress_cte, shearStress_steps],
-            [viscosity_cte, viscosity_steps])
-
-
 def getSamplesData(dataPath, nSt, nIc):
-    dict_cteRate, dict_stepsRate = {}, {}  # Dicionário para armazenar resultados por caminho de arquivo
-    st_time, st_rateCte, st_rateSteps, st_stressCte, st_stressSteps, st_viscosityCte, st_viscositySteps = [], [], [], [], [], [], []
-    ic_time, ic_rateCte, ic_rateSteps, ic_stressCte, ic_stressSteps, ic_viscosityCte, ic_viscositySteps = [], [], [], [], [], [], []
-    kc_time, kc_rateCte, kc_rateSteps, kc_stressCte, kc_stressSteps, kc_viscosityCte, kc_viscositySteps = [], [], [], [], [], [], []
+    """
+    Reads multiple sample files and categorizes the data into 'cteRate' and 'stepsRate' dictionaries.
+    """
 
-    for sample, path in enumerate(dataPath):
+    def getSegments(dataframe):
+        """
+        Extracts time, shear rate, shear stress, and viscosity segments from the dataframe.
+        Returns tuples of constant and step segments.
+        """
+        time = dataframe['t in s'].to_numpy()
+        shear_rate = dataframe['ɣ̇ in 1/s'].to_numpy()
+        shear_stress = dataframe['τ in Pa'].to_numpy()
+        viscosity = dataframe['η in mPas'].to_numpy()
+
+        # Identifying segments in the data
+        seg3, seg4, seg5 = (dataframe.index[dataframe['SegIndex'] == seg].to_list()[0] for seg in ['3|1', '4|1', '5|1'])
+
+        # Slice segments
+        segments = lambda arr: (arr[seg3:seg4], arr[seg4:seg5])  # Returns (constant segment, step segment)
+        t_cte, t_steps = segments(time)
+
+        return {
+            'time': [t_cte - t_cte[0], t_steps - t_cte[0]],
+            'shear_rate': segments(shear_rate),
+            'shear_stress': segments(shear_stress),
+            'viscosity': segments(viscosity)
+        }
+    # Store data for each sample type
+    samples = {'st': [], 'ic': [], 'kc': []}
+
+    # Determine sample types for each path
+    sample_labels = ['st'] * nSt + ['ic'] * nIc + ['kc'] * (len(dataPath) - nSt - nIc)
+
+    # Read data and categorize based on sample type
+    for sample_type, path in zip(sample_labels, dataPath):
         df = pd.read_excel(path)
+        segments = getSegments(df)
+        samples[sample_type].append(segments)
 
-        if sample < nSt:
-            st_time_i, st_rate_i, st_stress_i, st_viscosity_i = columnsRead(df)
+    # Initialize dictionaries to hold the results
+    dict_cteRate, dict_stepsRate = {}, {}
 
-            st_time.append(st_time_i[0])
+    # Populate dictionaries with consolidated sample data
+    for sample_type in samples:
+        dict_cteRate[f'{sample_type}_time'] = [s['time'][0] for s in samples[sample_type]]
+        dict_cteRate[f'{sample_type}_rateCte'] = [s['shear_rate'][0] for s in samples[sample_type]]
+        dict_cteRate[f'{sample_type}_stressCte'] = [s['shear_stress'][0] for s in samples[sample_type]]
+        dict_cteRate[f'{sample_type}_viscosityCte'] = [s['viscosity'][0] for s in samples[sample_type]]
 
-            st_rateCte.append(st_rate_i[0])
-            st_rateSteps.append(st_rate_i[1])
-
-            st_stressCte.append(st_stress_i[0])
-            st_stressSteps.append(st_stress_i[1])
-
-            st_viscosityCte.append(st_viscosity_i[0])
-            st_viscositySteps.append(st_viscosity_i[1])
-
-        elif sample < nSt + nIc:
-            ic_time_i, ic_rate_i, ic_stress_i, ic_viscosity_i = columnsRead(df)
-
-            ic_time.append(ic_time_i[0])
-
-            ic_rateCte.append(ic_rate_i[0])
-            ic_rateSteps.append(ic_rate_i[1])
-
-            ic_stressCte.append(ic_stress_i[0])
-            ic_stressSteps.append(ic_stress_i[1])
-
-            ic_viscosityCte.append(ic_viscosity_i[0])
-            ic_viscositySteps.append(ic_viscosity_i[1])
-
-        else:
-            kc_time_i, kc_rate_i, kc_stress_i, kc_viscosity_i = columnsRead(df)
-
-            kc_time.append(kc_time_i[0])
-
-            kc_rateCte.append(kc_rate_i[0])
-            kc_rateSteps.append(kc_rate_i[1])
-
-            kc_stressCte.append(kc_stress_i[0])
-            kc_stressSteps.append(kc_stress_i[1])
-
-            kc_viscosityCte.append(kc_viscosity_i[0])
-            kc_viscositySteps.append(kc_viscosity_i[1])
-
-    # Cte shear rate data
-    #   Pure starch
-    (dict_cteRate[f'st_time'],
-     dict_cteRate[f'st_rateCte'],
-     dict_cteRate[f'st_stressCte'],
-     dict_cteRate[f'st_viscosityCte']) = st_time, st_rateCte, st_stressCte, st_viscosityCte
-
-    (dict_stepsRate[f'st_rateSteps'],
-     dict_stepsRate[f'st_stressSteps'],
-     dict_stepsRate[f'st_viscositySteps']) = st_rateSteps, st_stressSteps, st_viscositySteps
-
-    #   Starch + iCar
-    (dict_cteRate[f'ic_time'],
-     dict_cteRate[f'ic_rateCte'],
-     dict_cteRate[f'ic_stressCte'],
-     dict_cteRate[f'ic_viscosityCte']) = ic_time, ic_rateCte, ic_stressCte, ic_viscosityCte
-
-    (dict_stepsRate[f'ic_rateSteps'],
-     dict_stepsRate[f'ic_stressSteps'],
-     dict_stepsRate[f'ic_viscositySteps']) = ic_rateSteps, ic_stressSteps, ic_viscositySteps
-
-    #   Starch + kCar
-    (dict_cteRate[f'kc_time'],
-     dict_cteRate[f'kc_rateCte'],
-     dict_cteRate[f'kc_stressCte'],
-     dict_cteRate[f'kc_viscosityCte']) = kc_time, kc_rateCte, kc_stressCte, kc_viscosityCte
-
-    (dict_stepsRate[f'kc_rateSteps'],
-     dict_stepsRate[f'kc_stressSteps'],
-     dict_stepsRate[f'kc_viscositySteps']) = kc_rateSteps, kc_stressSteps, kc_viscositySteps
+        dict_stepsRate[f'{sample_type}_rateSteps'] = [s['shear_rate'][1] for s in samples[sample_type]]
+        dict_stepsRate[f'{sample_type}_stressSteps'] = [s['shear_stress'][1] for s in samples[sample_type]]
+        dict_stepsRate[f'{sample_type}_viscositySteps'] = [s['viscosity'][1] for s in samples[sample_type]]
 
     return dict_cteRate, dict_stepsRate
 
@@ -222,7 +172,7 @@ def plotFlowTime(listRows, nSamples,
                 zorder=2)
         else:
             ax.errorbar(
-                x[curve][::3], y[curve][::3], yerr=0, color=curveColor, alpha=(0.9 - curve*0.2),
+                x[curve][::3], y[curve][::3], yerr=0, color=curveColor, alpha=(0.9 - curve * 0.2),
                 fmt=markerStyle, markersize=7, mec='k', mew=0.5,
                 capsize=3, lw=1, linestyle='',  # ecolor='k'
                 label=f'{sampleName}_{idSample + 1}', zorder=3)

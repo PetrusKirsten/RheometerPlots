@@ -29,26 +29,6 @@ def fonts(folder_path, s=11, m=13):
     plt.rc('figure', titlesize=m)  # fontsize of the figure title
 
 
-def exportFit(
-        sample,
-        K, n, sigmaZero, err,
-        rows):
-    data = {
-        'Sample': sample,
-        'K': K, 'K err': err[0],
-        'n': n, 'n err': err[1],
-        'sigmaZero': sigmaZero, 'sigmaZero err': err[2]}
-
-    rows.append(data)
-
-    return rows
-
-
-# TODO: fazer função para fitar modelo de HB
-def powerLaw(sigma, k, n, sigmaZero):
-    return sigmaZero + k * (sigma ** n)
-
-
 def getCteMean(values, tolerance=100):
     """
     :param values: to be analysed
@@ -86,29 +66,28 @@ def getCteMean(values, tolerance=100):
     return mean, iStart, iEnd
 
 
-def columnsRead(dataframe):
-    time, shearRate, shearStress, viscosity = (
-        dataframe['t in s'].to_numpy(),
-        dataframe['ɣ̇ in 1/s'].to_numpy(),
-        dataframe['τ in Pa'].to_numpy(),
-        dataframe['η in mPas'].to_numpy())
-
-    seg3, seg4, seg5 = (dataframe.index[dataframe['SegIndex'] == '3|1'].to_list()[0],
-                        dataframe.index[dataframe['SegIndex'] == '4|1'].to_list()[0],
-                        dataframe.index[dataframe['SegIndex'] == '5|1'].to_list()[0])
-
-    tCte, tSteps = time[seg3:seg4], time[seg4:seg5]
-    shearRate_cte, shearRate_steps = shearRate[seg3:seg4], shearRate[seg4:seg5]
-    shearStress_cte, shearStress_steps = shearStress[seg3:seg4], shearStress[seg4:seg5]
-    viscosity_cte, viscosity_steps = viscosity[seg3:seg4], viscosity[seg4:seg5]
-
-    return ([tCte - tCte[0], tSteps - tCte[0]],
-            [shearRate_cte, shearRate_steps],
-            [shearStress_cte, shearStress_steps],
-            [viscosity_cte, viscosity_steps])
-
-
 def getSamplesData(dataPath, nSt, nIc):
+    def columnsRead(dataframe):
+        time, shearRate, shearStress, viscosity = (
+            dataframe['t in s'].to_numpy(),
+            dataframe['ɣ̇ in 1/s'].to_numpy(),
+            dataframe['τ in Pa'].to_numpy(),
+            dataframe['η in mPas'].to_numpy())
+
+        seg3, seg4, seg5 = (dataframe.index[dataframe['SegIndex'] == '3|1'].to_list()[0],
+                            dataframe.index[dataframe['SegIndex'] == '4|1'].to_list()[0],
+                            dataframe.index[dataframe['SegIndex'] == '5|1'].to_list()[0])
+
+        tCte, tSteps = time[seg3:seg4], time[seg4:seg5]
+        shearRate_cte, shearRate_steps = shearRate[seg3:seg4], shearRate[seg4:seg5]
+        shearStress_cte, shearStress_steps = shearStress[seg3:seg4], shearStress[seg4:seg5]
+        viscosity_cte, viscosity_steps = viscosity[seg3:seg4], viscosity[seg4:seg5]
+
+        return ([tCte - tCte[0], tSteps - tCte[0]],
+                [shearRate_cte, shearRate_steps],
+                [shearStress_cte, shearStress_steps],
+                [viscosity_cte, viscosity_steps])
+
     dict_cteRate, dict_stepsRate = {}, {}  # Dicionário para armazenar resultados por caminho de arquivo
     st_time, st_rateCte, st_rateSteps, st_stressCte, st_stressSteps, st_viscosityCte, st_viscositySteps = [], [], [], [], [], [], []
     ic_time, ic_rateCte, ic_rateSteps, ic_stressCte, ic_stressSteps, ic_viscosityCte, ic_viscositySteps = [], [], [], [], [], [], []
@@ -193,21 +172,22 @@ def getSamplesData(dataPath, nSt, nIc):
     return dict_cteRate, dict_stepsRate
 
 
-def plotFlowTime(listRows, nSamples,
-                 ax, x, y,
-                 axTitle, yLabel, yLim,
-                 curveColor, markerStyle,
-                 sampleName,
-                 logScale=False):
+def plotFreqSweeps(nSamples,
+                   ax, x, y,
+                   axTitle, yLabel, yLim,
+                   curveColor, markerStyle,
+                   sampleName,
+                   logScale=False):
     def legendLabel():
         """Applies consistent styling to legends in plots."""
         legend = ax.legend(fancybox=False, frameon=True, framealpha=0.9, fontsize=9)
         legend.get_frame().set_facecolor('w')
         legend.get_frame().set_edgecolor('whitesmoke')
 
-    def configPlot(fit, idSample):
+    def configPlot(idSample):
         ax.set_title(axTitle, size=9, color='crimson')
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+
         ax.set_xlabel('Time (s)')
         ax.set_xscale('log' if logScale else 'linear')
         ax.set_xlim([-20, +600])
@@ -216,41 +196,16 @@ def plotFlowTime(listRows, nSamples,
         ax.set_yscale('log' if logScale else 'linear')
         ax.set_ylim(yLim)
 
-        if fit:
-            ax.plot(
-                x_fit, y_fit, color=curveColor, linestyle=':', linewidth=1,
-                zorder=2)
-        else:
-            ax.errorbar(
-                x[curve][::3], y[curve][::3], yerr=0, color=curveColor, alpha=(0.9 - curve*0.2),
-                fmt=markerStyle, markersize=7, mec='k', mew=0.5,
-                capsize=3, lw=1, linestyle='',  # ecolor='k'
-                label=f'{sampleName}_{idSample + 1}', zorder=3)
+        ax.errorbar(
+            x[curve][::3], y[curve][::3], yerr=0, color=curveColor, alpha=(0.9 - curve*0.2),
+            fmt=markerStyle, markersize=7, mec='k', mew=0.5,
+            capsize=3, lw=1, linestyle='',  # ecolor='k'
+            label=f'{sampleName}_{idSample + 1}', zorder=3)
 
         legendLabel()
 
     for curve in range(nSamples):
-        params, covariance = curve_fit(powerLaw, x[curve], y[curve], p0=(2, 1, 0))
-        errors = np.sqrt(np.diag(covariance))
-        K, n, sigmaZero = params
-        x_fit = np.linspace(0, 700, 700)
-        y_fit = powerLaw(x_fit, K, n, sigmaZero)
-
-        configPlot(fit=False, idSample=curve)
-        configPlot(fit=True, idSample=curve)
-
-        listRows = exportFit(
-            f'{sampleName}',
-            K, n, sigmaZero, errors,
-            listRows)
-
-        print(
-            f'\n· {sampleName} thixotropy fit parameters:\n'
-            f'K = {K:.2f} ± {errors[0]:.2f},\n'
-            f'n = {n:.2f} ± {errors[1]:.2f},\n'
-            f'sigma_0 = {sigmaZero:.1f} ± {errors[2]:.2f}.\n')
-
-    return listRows
+        configPlot(idSample=curve)
 
 
 def main(dataPath):
@@ -285,21 +240,21 @@ def main(dataPath):
 
     table = []
 
-    table = plotFlowTime(
+    table = plotFreqSweeps(
         listRows=table, nSamples=st_nSamples,
         ax=axStress, x=x_st, y=s_st,
         axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
         curveColor='silver', markerStyle='o',
         sampleName=f'10_0WSt')
 
-    table = plotFlowTime(
+    table = plotFreqSweeps(
         listRows=table, nSamples=ic_nSamples,
         ax=axStress, x=x_ic, y=s_ic,
         axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
         curveColor='deepskyblue', markerStyle='o',
         sampleName=f'10_0WSt_iCar')
 
-    table = plotFlowTime(
+    table = plotFreqSweeps(
         listRows=table, nSamples=kc_nSamples,
         ax=axStress, x=x_kc, y=s_kc,
         axTitle='', yLabel='Shear stress (Pa)', yLim=(100, 600),
