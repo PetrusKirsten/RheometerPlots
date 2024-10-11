@@ -31,22 +31,49 @@ def fonts(folder_path, s=11, m=13):
 
 def exportFit(
         sample,
-        K, n, sigmaZero, err,
-        rows):
-    data = {
-        'Sample': sample,
-        'K': K, 'K err': err[0],
-        'n': n, 'n err': err[1],
-        'sigmaZero': sigmaZero, 'sigmaZero err': err[2]}
+        data, err,
+        rows, modHB=False):
+    keys = ('eta0', 'tau0', 'tau_od', 'gammaDot_od', 'visc_K', 'visc_n', 'etaInf') if modHB \
+        else ('K', 'n', 'sigmaZero')
+    values = (data, err)
 
-    rows.append(data)
+    dictData = {'Sample': sample}
+    iParams = 0
+    for key, value in zip(keys, range(len(values[0]))):
+        dictData[f'{key}'] = values[0][iParams]
+        dictData[f'{key} err'] = values[1][iParams]
+        iParams += 1
+
+    rows.append(dictData)
 
     return rows
 
 
-# TODO: fazer função para fitar modelo de HB
-def powerLaw(sigma, k, n, sigmaZero):
+def funcHB(sigma, k, n, sigmaZero):
     return sigmaZero + k * (sigma ** n)
+
+
+def funcModHB(gamma_dot, eta_0, tau_0, tau_od, gamma_dot_od, K, n, eta_inf):
+    # First part of the equation
+    exp_term = np.exp(- (eta_0 * gamma_dot) / tau_0)
+    part1 = 1 - exp_term
+
+    # Second part (inside the curly brackets)
+    term1 = (tau_0 - tau_od) / gamma_dot * np.exp(- gamma_dot / gamma_dot_od)
+    term2 = tau_od / gamma_dot
+    term3 = K * gamma_dot ** (n - 1)
+
+    # Combine the second part
+    part2 = term1 + term2 + term3
+
+    # Final equation
+    eta_ss = part1 * part2 + eta_inf
+
+    return eta_ss
+
+
+def funcTransient(t, tau_0, tau_e, alpha, gamma_dot):
+    return tau_e + (tau_0 - tau_e) * np.exp(alpha * gamma_dot * t)
 
 
 def getCteMean(values, tolerance=100):
@@ -114,6 +141,7 @@ def getSamplesData(dataPath, nSt, nIc):
             'shear_stress': segments(shear_stress),
             'viscosity': segments(viscosity)
         }
+
     # Store data for each sample type
     samples = {'st': [], 'ic': [], 'kc': []}
 
@@ -143,137 +171,205 @@ def getSamplesData(dataPath, nSt, nIc):
     return dict_cteRate, dict_stepsRate
 
 
-def plotFlowTime(listRows, nSamples,
-                 ax, x, y,
-                 axTitle, yLabel, yLim,
-                 curveColor, markerStyle,
-                 sampleName,
-                 logScale=False):
+def plotFlow(listRows, nSamples,
+             ax, x, y,
+             axTitle, yLabel, yLim, xLabel, xLim,
+             curveColor, markerStyle,
+             sampleName, fit='',
+             logScale=False):
     def legendLabel():
         """Applies consistent styling to legends in plots."""
         legend = ax.legend(fancybox=False, frameon=True, framealpha=0.9, fontsize=9)
         legend.get_frame().set_facecolor('w')
         legend.get_frame().set_edgecolor('whitesmoke')
 
-    def configPlot(fit, idSample):
+    def configPlot(idSample):
         ax.set_title(axTitle, size=9, color='crimson')
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-        ax.set_xlabel('Time (s)')
+
+        ax.set_xlabel(f'{xLabel}')
         ax.set_xscale('log' if logScale else 'linear')
-        ax.set_xlim([-20, +600])
+        ax.set_xlim(xLim)
 
         ax.set_ylabel(f'{yLabel}')
         ax.set_yscale('log' if logScale else 'linear')
         ax.set_ylim(yLim)
 
-        if fit:
+        if fit != '':
             ax.plot(
                 x_fit, y_fit, color=curveColor, linestyle=':', linewidth=1,
                 zorder=2)
-        else:
-            ax.errorbar(
-                x[curve][::3], y[curve][::3], yerr=0, color=curveColor, alpha=(0.9 - curve * 0.2),
-                fmt=markerStyle, markersize=7, mec='k', mew=0.5,
-                capsize=3, lw=1, linestyle='',  # ecolor='k'
-                label=f'{sampleName}_{idSample + 1}', zorder=3)
+
+        ax.errorbar(
+            x[curve], y[curve], yerr=0, color=curveColor, alpha=(0.9 - curve * 0.2),
+            fmt=markerStyle, markersize=7, mec='k', mew=0.5,
+            capsize=3, lw=1, linestyle='',  # ecolor='k'
+            label=f'{sampleName}_{idSample + 1}', zorder=3)
 
         legendLabel()
 
     for curve in range(nSamples):
-        params, covariance = curve_fit(powerLaw, x[curve], y[curve], p0=(2, 1, 0))
-        errors = np.sqrt(np.diag(covariance))
-        K, n, sigmaZero = params
-        x_fit = np.linspace(0, 700, 700)
-        y_fit = powerLaw(x_fit, K, n, sigmaZero)
+        # split_index = np.where(x[curve] <= 180)[0][-1]
+        # x[curve], y[curve] = x[curve][:split_index], y[curve][:split_index]
 
-        configPlot(fit=False, idSample=curve)
-        configPlot(fit=True, idSample=curve)
+        if fit == 'HB':
+            params, covariance = curve_fit(funcHB, x[curve], y[curve], p0=(2, 1, 0))
+            errors = np.sqrt(np.diag(covariance))
+            K, n, sigmaZero = params
+            x_fit = np.linspace(.1, 1000, 1000)
+            y_fit = funcHB(x_fit, K, n, sigmaZero)
+            listRows = exportFit(
+                f'{sampleName}',
+                params, errors,
+                listRows)
+            configPlot(idSample=curve)
 
-        listRows = exportFit(
-            f'{sampleName}',
-            K, n, sigmaZero, errors,
-            listRows)
+        if fit == 'modHB':
+            params, covariance = curve_fit(funcModHB, x[curve], y[curve],
+                                           p0=(100, 10, 5, 1, 1, 0.5, 0.1), maxfev=5000, method='dogbox')
+            errors = np.sqrt(np.diag(covariance))
+            eta0, tau0, tau_od, gammaDot_od, visc_K, visc_n, etaInf = params
+            x_fit = np.linspace(.1, 1000, 1000)
+            y_fit = funcModHB(x_fit, eta0, tau0, tau_od, gammaDot_od, visc_K, visc_n, etaInf)
+            listRows = exportFit(
+                f'{sampleName}',
+                params, errors,
+                listRows, modHB=True)
+            configPlot(idSample=curve)
 
-        print(
-            f'\n· {sampleName} thixotropy fit parameters:\n'
-            f'K = {K:.2f} ± {errors[0]:.2f},\n'
-            f'n = {n:.2f} ± {errors[1]:.2f},\n'
-            f'sigma_0 = {sigmaZero:.1f} ± {errors[2]:.2f}.\n')
+        if fit == 'transient':
+            params, covariance = curve_fit(funcTransient, x[curve], y[curve], p0=(10, 1, 0.1, 1), method='trf')  # method='dogbox', maxfev=5000)
+            errors = np.sqrt(np.diag(covariance))
+            print(params, errors)
+            tau_0, tau_e, alpha, gamma_dot = params
+            x_fit = np.linspace(0, 180, 180)
+            y_fit = funcTransient(x_fit, tau_0, tau_e, alpha, gamma_dot)
+            # listRows = exportFit(
+            #     f'{sampleName}',
+            #     params, errors,
+            #     listRows)
+            configPlot(idSample=curve)
+
+        configPlot(idSample=curve)
 
     return listRows
 
 
-def main(dataPath):
+def main(dataPath, thixo):
     fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
-    # samplesQuantities = list(samplesValues.keys())
 
-    fileName = '10pct_0WSt_and_Car-Thixotropy'
+    fileName = '10pct_0WSt_and_Car-Thixotropy' if thixo else '10pct_0WSt_and_Car-Flow'
     dirSave = Path(*Path(filePath[0]).parts[:Path(filePath[0]).parts.index('data') + 1])
 
     plt.style.use('seaborn-v0_8-ticks')
     fig, axStress = plt.subplots(figsize=(10, 7), facecolor='w', ncols=1)
-    # axVisc = axStress.twinx()
-    fig.suptitle(f'Shear flow')
+    axVisc = None if thixo else axStress.twinx()
+    fig.suptitle(f'Constante shear rate flow' if thixo else f'Steps shear rate flow')
 
-    yTitle, yLimits = f'Shear stress (Pa)', (100, 600)
-    xTitle, xLimits = f'Frequency (Hz)', (0.05, 150)
+    xTitle, xLimits = (f'Time (s)', (-5, 200)) if thixo else (f'Shear rate ($s^{-1}$)', (15, 500))
+    yTitle, yLimits = (f'Shear stress (Pa)', (100, 600)) if thixo else (f'Shear stress (Pa)', (3, 550))
+    yTitleVisc, yLimitsVisc = f'Viscosity (mPa·s)', (450, 100000)
     st5_color, st10_color, ic_color, kc_color = 'silver', 'sandybrown', 'hotpink', 'mediumturquoise'
 
     st_nSamples, ic_nSamples, kc_nSamples = 2, 3, 2
-    constantShear, _ = getSamplesData(dataPath, st_nSamples, ic_nSamples)
+    constantShear, stepsShear = getSamplesData(dataPath, st_nSamples, ic_nSamples)
 
-    (x_st, s_st, v_st,
-     x_ic, s_ic, v_ic,
-     x_kc, s_kc, v_kc) = (
-        constantShear['st_time'],
-        constantShear['st_stressCte'],
-        constantShear['st_viscosityCte'],
-        #
-        constantShear['ic_time'],
-        constantShear['ic_stressCte'],
-        constantShear['ic_viscosityCte'],
-        #
-        constantShear['kc_time'],
-        constantShear['kc_stressCte'],
-        constantShear['kc_viscosityCte'])
+    # Shear rate cte data
+    if thixo:
+        fitModeStress, fitModeVisc = '', ''
+        (x_st, s_st, v_st,
+         x_ic, s_ic, v_ic,
+         x_kc, s_kc, v_kc) = (
+            # 10% starch
+            constantShear['st_time'],
+            constantShear['st_stressCte'],
+            constantShear['st_viscosityCte'],
+            # 10% starch + iota
+            constantShear['ic_time'],
+            constantShear['ic_stressCte'],
+            constantShear['ic_viscosityCte'],
+            # 10% starch + kappa
+            constantShear['kc_time'],
+            constantShear['kc_stressCte'],
+            constantShear['kc_viscosityCte'])
+    # Shear rate steps data
+    else:
+        fitModeStress, fitModeVisc = 'HB', 'modHB'
+        (x_st, s_st, v_st,
+         x_ic, s_ic, v_ic,
+         x_kc, s_kc, v_kc) = (
+            # 10% starch
+            stepsShear['st_rateSteps'],
+            stepsShear['st_stressSteps'],
+            stepsShear['st_viscositySteps'],
+            # 10% starch + iota
+            stepsShear['ic_rateSteps'],
+            stepsShear['ic_stressSteps'],
+            stepsShear['ic_viscositySteps'],
+            # 10% starch + kappa
+            stepsShear['kc_rateSteps'],
+            stepsShear['kc_stressSteps'],
+            stepsShear['kc_viscositySteps'])
 
-    table = []
-
-    table = plotFlowTime(
-        listRows=table, nSamples=st_nSamples,
+    tableStress = []
+    # Shear stress plot
+    tableStress = plotFlow(
+        listRows=tableStress, nSamples=st_nSamples,
         ax=axStress, x=x_st, y=s_st,
-        axTitle='', yLabel=yTitle, yLim=yLimits,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
         curveColor=st10_color, markerStyle='o',
-        sampleName=f'10_0WSt')
+        sampleName=f's10_0WSt', logScale=False if thixo else True, fit=fitModeStress)
 
-    table = plotFlowTime(
-        listRows=table, nSamples=ic_nSamples,
+    tableStress = plotFlow(
+        listRows=tableStress, nSamples=ic_nSamples,
         ax=axStress, x=x_ic, y=s_ic,
-        axTitle='', yLabel=yTitle, yLim=yLimits,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
         curveColor=ic_color, markerStyle='o',
-        sampleName=f'10_0WSt_iCar')
+        sampleName=f's10_0WSt_iCar', logScale=False if thixo else True, fit=fitModeStress)
 
-    table = plotFlowTime(
-        listRows=table, nSamples=kc_nSamples,
+    tableStress = plotFlow(
+        listRows=tableStress, nSamples=kc_nSamples,
         ax=axStress, x=x_kc, y=s_kc,
-        axTitle='', yLabel=yTitle, yLim=yLimits,
+        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
         curveColor=kc_color, markerStyle='o',
-        sampleName=f'10_0WSt_kCar')
+        sampleName=f's10_0WSt_kCar', logScale=False if thixo else True, fit=fitModeStress)
+
+    # Viscosity plot
+    # tableStress = plotFlow(
+    #     listRows=tableStress, nSamples=st_nSamples,
+    #     ax=axVisc, x=x_st, y=v_st,
+    #     axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
+    #     curveColor=st10_color, markerStyle='s',
+    #     sampleName=f'v10_0WSt', logScale=True, fit=fitModeVisc)
+    #
+    # tableStress = plotFlow(
+    #     listRows=tableStress, nSamples=ic_nSamples,
+    #     ax=axVisc, x=x_ic, y=v_ic,
+    #     axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
+    #     curveColor=ic_color, markerStyle='s',
+    #     sampleName=f'v10_0WSt_iCar', logScale=True, fit=fitModeVisc)
+    #
+    # tableStress = plotFlow(
+    #     listRows=tableStress, nSamples=kc_nSamples,
+    #     ax=axVisc, x=x_kc, y=v_kc,
+    #     axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
+    #     curveColor=kc_color, markerStyle='s',
+    #     sampleName=f'v10_0WSt_kCar', logScale=True, fit=fitModeVisc)
 
     # plt.subplots_adjust(wspace=0.175, top=0.890, bottom=0.14, left=0.05, right=0.95)
     plt.tight_layout()
     plt.show()
     fig.savefig(f'{dirSave}' + f'\\{fileName}' + '.png', facecolor='w', dpi=600)
 
-    fitParams = pd.DataFrame(table)
+    fitParams = pd.DataFrame(tableStress)
     fitParams.to_excel(f'{dirSave}' + f'\\{fileName}' + '.xlsx', index=False)
 
-    print(f'\n\n· Chart and table with fitted parameters saved at\n{dirSave}.')
+    print(f'\n\n· Chart and tableStress with fitted parameters saved at\n{dirSave}.')
 
 
 if __name__ == '__main__':
-    # folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
-    folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
+    folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
+    # folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
     filePath = [
         folderPath + "/031024/10_0WSt/10_0WSt-viscRec_1.xlsx",
         folderPath + "/031024/10_0WSt/10_0WSt-viscRec_2.xlsx",
@@ -288,4 +384,4 @@ if __name__ == '__main__':
         # folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_4a.xlsx",
     ]
 
-    main(dataPath=filePath)
+    main(dataPath=filePath, thixo=True)
