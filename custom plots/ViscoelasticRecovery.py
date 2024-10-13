@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.optimize import curve_fit
 from matplotlib import pyplot as plt
 from matplotlib.font_manager import FontProperties
@@ -97,10 +99,10 @@ def getSamplesData(dataPath, n5st, n10St, nIc, nKc):
         }
 
     # Store data for each sample type
-    samples = {'5_st': [], '10_st': [], 'ic': [], 'kc': []}
+    samples = {'5% WSt': [], '10% WSt': [], '10% WSt iCar': [], '10% WSt kCar': []}
 
     # Determine sample types for each path
-    sample_labels = ['5_st'] * n5st + ['10_st'] * n10St + ['ic'] * nIc + ['kc'] * nKc
+    sample_labels = ['5% WSt'] * n5st + ['10% WSt'] * n10St + ['10% WSt iCar'] * nIc + ['10% WSt kCar'] * nKc
 
     # Read data and categorize based on sample type
     for sample_type, path in zip(sample_labels, dataPath):
@@ -138,17 +140,21 @@ def plotFreqSweeps(sampleName,
         legend.get_frame().set_edgecolor('whitesmoke')
 
     def configPlot(idSample=0):
-        meanStorage, storageMeanErr, indexStart_storage, indexEnd_storage = getCteMean(yP[0])
         dotCteMean = 'k'
         idSample = idSample + 1 if individualData else 'Mean'
+        axisColor = '#383838'
+
         ax.set_title(axTitle, size=9, color='crimson')
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        ax.spines[['top', 'bottom', 'left', 'right']].set_color(axisColor)
+        ax.tick_params(axis='both', colors=axisColor)
+        ax.grid(True, which='both', axis='y', linestyle='-', linewidth=0.5, color='lightsteelblue', alpha=0.5)
 
-        ax.set_xlabel(f'{xLabel}')
+        ax.set_xlabel(f'{xLabel}', color=axisColor)
         ax.set_xscale('log' if logScale else 'linear')
         ax.set_xlim(xLim)
-        ax.grid(True, which='both', axis='y', linestyle='-', linewidth=0.5, color='silver', alpha=0.5)
-        ax.set_ylabel(f'{yLabel}')
+
+        ax.set_ylabel(f'{yLabel}', color=axisColor)
         ax.set_yscale('log' if logScale else 'linear')
         ax.set_ylim(yLim)
 
@@ -158,26 +164,63 @@ def plotFreqSweeps(sampleName,
         #     fmt='.', markersize=4, mfc=dotCteMean, mec=dotCteMean, mew=1,
         #     capsize=0, lw=1, linestyle='',
         #     label=f'', zorder=4)
-
         ax.errorbar(
-            x[0], yP[0], yPerr[0],
-            color=curveColor, alpha=0.85,
+            x, yP, yPerr,
+            color=curveColor, alpha=1,
             fmt=markerStyle, markersize=7, mfc=curveColor, mec='k', mew=0.5,
             capsize=3, lw=0.75, linestyle=lineStyle,
-            label=f'{sampleName}_{idSample} | '
-                  + "$\overline{G'} \\approx$" + f'{meanStorage:.0f} ± {storageMeanErr:.0f} ' + '$Pa$',
-            zorder=3)
-
+            label=f'', zorder=3)
+        # label=f'{sampleName}_{idSample} | '
+        #       + "$\overline{G'} \\approx$" + f'{meanStorage:.0f} ± {storageMeanErr:.0f} ' + '$Pa$',
         ax.errorbar(
-            x[0], yD[0], yDerr[0],
-            color=curveColor, alpha=0.85,
+            x, yD, yDerr,
+            color=curveColor, alpha=1,
             fmt=markerStyle, markersize=7, mfc='w', mec=curveColor, mew=0.75,
             capsize=3, lw=0.75, linestyle=':',
             zorder=3)
+        # legendLabel()
 
-        legendLabel()
-
+    meanStorage, storageMeanErr, indexStart_storage, indexEnd_storage = getCteMean(yP)
     configPlot()
+
+
+def plotInsetMean(data, dataErr, keys, colors, ax):
+    ax_inset = inset_axes(ax, width='30%', height='20%', loc='upper left')  # Create an inset plot
+
+    xInset = np.arange(len(data))
+    ax_inset.barh(xInset, width=data, xerr=0,
+                  color=colors, edgecolor='black', alpha=0.85, linewidth=0.5)
+
+    ax_inset.errorbar(y=xInset, x=data, xerr=dataErr, alpha=1,
+                      color='#383838', linestyle='', capsize=2, linewidth=0.75)
+
+    for i in range(len(data)):
+        ax_inset.text(data[i] + dataErr[i] + 100, xInset[i],
+                      f'{data[i]:.0f} ± {dataErr[i]:.0f}',
+                      size=8, va='center_baseline', ha='left', color='black')
+
+    ax_inset.text(
+        0.5, -0.08, "Average G' values (Pa)",
+        ha='center', va='top', fontsize=9, transform=ax_inset.transAxes)
+    ax_inset.set_facecolor('snow')  # Change to your desired color
+    ax_inset.tick_params(axis='both', labelsize=8, length=0)
+    ax_inset.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+    ax_inset.spines[['top', 'bottom', 'left', 'right']].set_color('dimgrey')
+
+    ax_inset.set_yticks(np.arange(len(data)))
+    ax_inset.set_yticklabels(keys)
+    ax_inset.yaxis.tick_right()
+    ax_inset.yaxis.set_label_position('right')
+
+    ax_inset.set_xticks([])
+    ax_inset.set_xlim(0, 2900)
+
+
+def midAxis(color, ax):
+    ax[0].spines['right'].set_color(color)
+    ax[1].spines['left'].set_color(color)
+    ax[1].yaxis.tick_right()
+    ax[1].yaxis.set_label_position('right')
 
 
 def main(dataPath):
@@ -188,13 +231,9 @@ def main(dataPath):
 
     plt.style.use('seaborn-v0_8-ticks')
     fig, axes = plt.subplots(figsize=(18, 7), facecolor='w', ncols=2, nrows=1)
-
-    axes[1].yaxis.tick_right()
-    axes[1].yaxis.set_label_position('right')
-
     fig.suptitle(f'Viscoelastic recovery by frequency sweeps assay.')
 
-    yTitle, yLimits = f"Storage (G')" + f' and loss (G") moduli' + f' (Pa)', (1, 2*10**5)
+    yTitle, yLimits = f"Storage (G')" + f' and loss (G") moduli' + f' (Pa)', (1, 2 * 10 ** 5)
     xTitle, xLimits = f'Frequency (Hz)', (0.06, 200)
 
     ic5_nSamples, st10_nSamples, ic_nSamples, kc_nSamples = 1, 2, 3, 2
@@ -205,17 +244,20 @@ def main(dataPath):
     data = getSamplesData(dataPath, *nSamples)
 
     listBefore = {
-        '5_st': ([], [], []),  # (x_5st, gP_5st, gD_5st)
-        '10_st': ([], [], []),  # (x_10st, gP_10st, gD_10st)
-        'ic': ([], [], []),  # (x_ic, gP_ic, gD_ic)
-        'kc': ([], [], [])  # (x_kc, gP_kc, gD_kc)
+        '5% WSt': ([], [], []),  # (x_5st, gP_5st, gD_5st)
+        '10% WSt': ([], [], []),  # (x_10st, gP_10st, gD_10st)
+        '10% WSt iCar': ([], [], []),  # (x_ic, gP_ic, gD_ic)
+        '10% WSt kCar': ([], [], [])  # (x_kc, gP_kc, gD_kc)
     }
     listAfter = {
-        '5_st': ([], [], []),  # (x_5st, gP_5st, gD_5st)
-        '10_st': ([], [], []),  # (x_10st, gP_10st, gD_10st)
-        'ic': ([], [], []),  # (x_ic, gP_ic, gD_ic)
-        'kc': ([], [], [])  # (x_kc, gP_kc, gD_kc)
+        '5% WSt': ([], [], []),  # (x_5st, gP_5st, gD_5st)
+        '10% WSt': ([], [], []),  # (x_10st, gP_10st, gD_10st)
+        '10% WSt iCar': ([], [], []),  # (x_ic, gP_ic, gD_ic)
+        '10% WSt kCar': ([], [], [])  # (x_kc, gP_kc, gD_kc)
     }
+
+    meanBefore, meanAfter = [], []
+    meanBeforeErr, meanAfterErr = [], []
 
     for key, (x, gP, gD) in listBefore.items():
         x.append(data[f'{key}_freq'])
@@ -228,22 +270,42 @@ def main(dataPath):
         gD.append(data[f'{key}_loss_broken'])
 
     for k_a, k_b, c in zip(listAfter, listBefore, colors):
+        gP, gD = np.mean(listBefore[k_a][1], axis=1)[0], np.mean(listBefore[k_a][2], axis=1)[0]
+        gPerr, gDerr = np.std(listBefore[k_a][1], axis=1)[0], np.std(listBefore[k_a][2], axis=1)[0]
 
-        plotFreqSweeps(
-            ax=axes[0], x=np.mean(listBefore[k_a][0], axis=1),
-            yP=np.mean(listBefore[k_a][1], axis=1), yD=np.mean(listBefore[k_a][2], axis=1),
-            yPerr=np.std(listBefore[k_a][1], axis=1), yDerr=np.std(listBefore[k_a][2], axis=1),
+        meanStorage, storageMeanErr, _, _ = getCteMean(gP)
+        meanBefore.append(meanStorage)
+        meanBeforeErr.append(storageMeanErr)
+
+        plotFreqSweeps(  # Before axes
+            ax=axes[0], x=np.mean(listBefore[k_a][0], axis=1)[0],
+            yP=gP, yD=gD, yPerr=gPerr, yDerr=gDerr,
             axTitle='Before breakage', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
             curveColor=c, markerStyle='o',
             sampleName=k_a, logScale=True)
 
-        plotFreqSweeps(
-            ax=axes[1], x=np.mean(listAfter[k_a][0], axis=1),
-            yP=np.mean(listAfter[k_a][1], axis=1), yD=np.mean(listAfter[k_a][2], axis=1),
-            yPerr=np.std(listAfter[k_a][1], axis=1), yDerr=np.std(listAfter[k_a][2], axis=1),
+        gP, gD = np.mean(listAfter[k_a][1], axis=1)[0], np.mean(listAfter[k_a][2], axis=1)[0]
+        gPerr, gDerr = np.std(listAfter[k_a][1], axis=1)[0], np.std(listAfter[k_a][2], axis=1)[0]
+
+        meanStorage, storageMeanErr, _, _ = getCteMean(gP)
+        meanAfter.append(meanStorage)
+        meanAfterErr.append(storageMeanErr)
+
+        plotFreqSweeps(  # After axes
+            ax=axes[1], x=np.mean(listAfter[k_a][0], axis=1)[0],
+            yP=gP, yD=gD, yPerr=gPerr, yDerr=gDerr,
             axTitle='After breakage', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
             curveColor=c, markerStyle='o',
             sampleName=k_a, logScale=True)
+
+    midAxis('slategrey', axes)
+    # Inset plot (bar plot showing meanStorage)
+    plotInsetMean(
+        data=meanBefore, dataErr=meanBeforeErr,
+        keys=listBefore.keys(), colors=colors, ax=axes[0])
+    plotInsetMean(
+        data=meanAfter, dataErr=meanAfterErr,
+        keys=listBefore.keys(), colors=colors, ax=axes[1])
 
     plt.subplots_adjust(wspace=0.0, top=0.93, bottom=0.1, left=0.05, right=0.95)
     # plt.tight_layout()
