@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+from matplotlib.ticker import MultipleLocator
 from scipy.optimize import curve_fit
 from matplotlib import pyplot as plt
 from matplotlib.font_manager import FontProperties
@@ -33,8 +35,7 @@ def exportFit(
         sample,
         data, err,
         rows, modHB=False):
-    keys = ('eta0', 'tau0', 'tau_od', 'gammaDot_od', 'visc_K', 'visc_n', 'etaInf') if modHB \
-        else ('K', 'n', 'sigmaZero')
+    keys = ('Initial stress (tau_0) in Pa', 'Equilibrium stress (tau_e) in Pa', 'Characteristic time (lambda) in s')
     values = (data, err)
 
     dictData = {'Sample': sample}
@@ -72,8 +73,8 @@ def funcModHB(gamma_dot, eta_0, tau_0, tau_od, gamma_dot_od, K, n, eta_inf):
     return eta_ss
 
 
-def funcTransient(t, tau_0, tau_e, alpha, gamma_dot):
-    return tau_e + (tau_0 - tau_e) * np.exp(alpha * gamma_dot * t)
+def funcTransient(t, tau_0, tau_e, time_cte):
+    return tau_e + (tau_0 - tau_e) * np.exp(- t / time_cte)
 
 
 def getCteMean(values, tolerance=100):
@@ -182,28 +183,32 @@ def plotFlow(listRows, nSamples, sampleName,
         legend.get_frame().set_facecolor('w')
         legend.get_frame().set_edgecolor('whitesmoke')
 
-    def configPlot(idSample, xPlot, yPlot, yErr=0):
+    def configPlot(idSample, xPlot, yPlot, yErr=0, scatter=True):
         ax.set_title(axTitle, size=9, color='crimson')
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
 
         ax.set_xlabel(f'{xLabel}')
         ax.set_xscale('log' if logScale else 'linear')
         ax.set_xlim(xLim)
+        ax.xaxis.set_major_locator(MultipleLocator(50))
+        ax.xaxis.set_minor_locator(MultipleLocator(10))
 
         ax.set_ylabel(f'{yLabel}')
         ax.set_yscale('log' if logScale else 'linear')
         ax.set_ylim(yLim)
+        ax.yaxis.set_major_locator(MultipleLocator(100))
+        ax.yaxis.set_minor_locator(MultipleLocator(25))
 
-        if fit != '':
-            ax.plot(
-                xPlot, yPlot, color=curveColor, linestyle=':', linewidth=1,
-                zorder=2)
-        else:
+        if scatter:
             ax.errorbar(
-                xPlot, yPlot, yerr=yErr, color=curveColor, alpha=(0.9 - curve*0.2) if individualData else 1.0,
+                xPlot, yPlot, yerr=yErr, color=curveColor, alpha=(0.9 - curve * 0.2) if individualData else .8,
                 fmt=markerStyle, markersize=7, mec='k', mew=0.5,
-                capsize=3, lw=.5, linestyle='-',  # ecolor='k'
+                capsize=3, lw=.5, linestyle='',  # ecolor='k'
                 label=f'{sampleName}', zorder=3)
+        else:
+            ax.plot(
+                xPlot, yPlot, color='darkgray', linestyle='-.', linewidth=.75,
+                zorder=2)
 
         legendLabel()
 
@@ -214,12 +219,13 @@ def plotFlow(listRows, nSamples, sampleName,
             configPlot(curve, x_split, y_split)
 
             if fit == 'transient':
-                params, covariance = curve_fit(funcTransient, x, y, p0=(10, 1, 0.1, 1), method='trf')  # method='dogbox', maxfev=5000)
+                params, covariance = curve_fit(funcTransient, x, y, p0=(10, 1, 0.1, 1),
+                                               method='trf')  # method='dogbox', maxfev=5000)
                 errors = np.sqrt(np.diag(covariance))
                 print(params, errors)
-                tau_0, tau_e, alpha, gamma_dot = params
+                tau_0, tau_e, t_cte = params
                 x_fit = np.linspace(0, 180, 180)
-                y_fit = funcTransient(x_fit, tau_0, tau_e, alpha, gamma_dot)
+                y_fit = funcTransient(x_fit, tau_0, tau_e, t_cte)
                 # listRows = exportFit(
                 #     f'{sampleName}',
                 #     params, errors,
@@ -243,6 +249,20 @@ def plotFlow(listRows, nSamples, sampleName,
             y_err = 0
             y_mean = y_split
 
+        if fit == 'transient':
+            params, covariance = curve_fit(funcTransient, x_mean, y_mean, p0=(y_mean[0], y_mean[-1], 100))
+            # method='trf')  # method='dogbox', maxfev=5000)
+            errors = np.sqrt(np.diag(covariance))
+            print(params, errors)
+            tau_0, tau_e, t_cte = params
+            x_fit = np.linspace(-10, 300, 620)
+            y_fit = funcTransient(x_fit, tau_0, tau_e, t_cte)
+            listRows = exportFit(
+                f'{sampleName}',
+                params, errors,
+                listRows)
+            configPlot(0, x_fit, y_fit, scatter=False)
+
         configPlot(0, x_mean, y_mean, yErr=y_err)
 
     return listRows
@@ -259,19 +279,22 @@ def main(dataPath):
 
     xTitle, xLimits = (f'Time (s)', (-4, 206))
     yTitle, yLimits = (f'Shear stress (Pa)', (0, 550))
-    yTitleVisc, yLimitsVisc = f'Viscosity (mPa·s)', (yLimits[0]*3.33, yLimits[1]*3.33)
+    yTitleVisc, yLimitsVisc = f'Viscosity (mPa·s)', (yLimits[0] * 3.33, yLimits[1] * 3.33)
     st10_color, ic10_color, kc5_color, kc10_color = 'sandybrown', 'deepskyblue', 'lightpink', 'hotpink'
 
+    fig, axesStress = plt.subplots(figsize=(12, 7), facecolor='w', ncols=1, nrows=1)
+    fig.suptitle(f'Constant shear rate flow')
     plt.style.use('seaborn-v0_8-ticks')
-    fig, axesStress = plt.subplots(figsize=(10, 7), facecolor='w', ncols=1, nrows=1)
+
     axesVisc = axesStress.twinx()
     axesVisc.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0)
     axesVisc.set_ylabel(f'{yTitleVisc}')
     axesVisc.set_ylim(yLimitsVisc)
-    fig.suptitle(f'Constant shear rate flow')
+    axesVisc.yaxis.set_major_locator(MultipleLocator(200))
+    axesVisc.yaxis.set_minor_locator(MultipleLocator(50))
 
     # Shear rate cte data
-    fitModeStress, fitModeVisc = '', ''
+    fitModeStress, fitModeVisc = 'transient', ''
     (x_10st, s_10st, v_10st,
      x_10ic, s_10ic, v_10ic,
      x_5kc, s_5kc, v_5kc,
@@ -297,30 +320,36 @@ def main(dataPath):
     # Shear stress plot
     tableStress = plotFlow(
         listRows=tableStress, nSamples=st10_nSamples,
-        ax=axesStress, x=x_10st, y=s_10st,
+        ax=axesStress, x=x_10st, y=s_10st,  # initialGuess=(s_10st[0], s_10st[-1], 100),  # tau_0, tau_e, time_cte
         axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
         curveColor=st10_color, markerStyle='o',
         sampleName=f'10% 0WSt', logScale=False, fit=fitModeStress)
     tableStress = plotFlow(
         listRows=tableStress, nSamples=ic_nSamples,
-        ax=axesStress, x=x_10ic, y=s_10ic,
+        ax=axesStress, x=x_10ic, y=s_10ic,  # initialGuess=(s_10ic[0], s_10ic[-1], 100),
         axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
         curveColor=ic10_color, markerStyle='o',
         sampleName=f'10% 0WSt iCar', logScale=False, fit=fitModeStress)
     tableStress = plotFlow(
         listRows=tableStress, nSamples=st5_nSamples,
-        ax=axesStress, x=x_5kc, y=s_5kc,
+        ax=axesStress, x=x_5kc, y=s_5kc,  # initialGuess=(s_5kc[0], s_5kc[-1], 100),
         axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
         curveColor=kc5_color, markerStyle='o',
         sampleName=f'5% 0WSt kCar', logScale=False, fit=fitModeStress)
     tableStress = plotFlow(
         listRows=tableStress, nSamples=kc_nSamples,
-        ax=axesStress, x=x_10kc, y=s_10kc,
+        ax=axesStress, x=x_10kc, y=s_10kc,  # initialGuess=(s_10kc[0], s_10kc[-1], 100),
         axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
         curveColor=kc10_color, markerStyle='o',
         sampleName=f'10% 0WSt kCar', logScale=False, fit=fitModeStress)
 
-    plt.subplots_adjust(hspace=0, wspace=0.200, top=0.940, bottom=0.095, left=0.090, right=0.900)
+    plt.subplots_adjust(
+        hspace=0,
+        wspace=0.200,
+        top=0.940,
+        bottom=0.095,
+        left=0.090,
+        right=0.900)
     # plt.tight_layout()
     plt.show()
     fig.savefig(f'{dirSave}' + f'\\{fileName}' + '.png', facecolor='w', dpi=600)
@@ -332,8 +361,8 @@ def main(dataPath):
 
 
 if __name__ == '__main__':
-    # folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
-    folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
+    folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
+    # folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
     filePath = [
         #
         folderPath + "/091024/5_0WSt_kCar/5_0WSt_kCar-viscoRecoveryandFlow_1.xlsx",
