@@ -105,7 +105,7 @@ def plotTempSweeps(nSamples, sampleName,
         ax.set_yscale('log' if logScale else 'linear')
         ax.set_ylim(yLim)
         ax.tick_params(axis='y', colors=axisColor, which='both')
-        # ax.yaxis.set_minor_locator(MultipleLocator(1000 if yLabel == 'Viscosity (mPa·s)' else 10))
+        # ax.yaxis.set_minor_locator(MultipleLocator(TempSweeps.py)
 
         ax.errorbar(
             x[0], y[0], 0,
