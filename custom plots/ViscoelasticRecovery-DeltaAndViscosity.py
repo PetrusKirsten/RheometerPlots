@@ -77,8 +77,6 @@ def getSamplesData(dataPath, nSt, nKc, nIc, nStCL, nKcCL, nIcCL):
         Returns tuples of constant and step segments.
         """
         freq = dataframe['f in Hz'].to_numpy()
-        elastic = dataframe["G' in Pa"].to_numpy()
-        loss = dataframe['G" in Pa'].to_numpy()
         delta = dataframe['tan(δ) in -'].to_numpy()
         viscComplex = dataframe['|η*| in mPas'].to_numpy()
 
@@ -91,8 +89,6 @@ def getSamplesData(dataPath, nSt, nKc, nIc, nStCL, nKcCL, nIcCL):
 
         return {
             'freq': segments(freq),
-            'storage': segments(elastic),
-            'loss': segments(loss),
             'delta': segments(delta),
             'viscosity': segments(viscComplex)
         }
@@ -117,14 +113,10 @@ def getSamplesData(dataPath, nSt, nKc, nIc, nStCL, nKcCL, nIcCL):
     # Populate dictionaries with consolidated sample data
     for sample_type in samples:
         dict_freqSweeps[f'{sample_type}_freq'] = [s['freq'][0] for s in samples[sample_type]]
-        dict_freqSweeps[f'{sample_type}_storage'] = [s['storage'][0] for s in samples[sample_type]]
-        dict_freqSweeps[f'{sample_type}_loss'] = [s['loss'][0] for s in samples[sample_type]]
         dict_freqSweeps[f'{sample_type}_delta'] = [s['delta'][0] for s in samples[sample_type]]
         dict_freqSweeps[f'{sample_type}_viscosity'] = [s['viscosity'][0] for s in samples[sample_type]]
 
         dict_freqSweeps[f'{sample_type}_freq_broken'] = [s['freq'][-1] for s in samples[sample_type]]
-        dict_freqSweeps[f'{sample_type}_storage_broken'] = [s['storage'][-1] for s in samples[sample_type]]
-        dict_freqSweeps[f'{sample_type}_loss_broken'] = [s['loss'][-1] for s in samples[sample_type]]
         dict_freqSweeps[f'{sample_type}_delta_broken'] = [s['delta'][-1] for s in samples[sample_type]]
         dict_freqSweeps[f'{sample_type}_viscosity_broken'] = [s['viscosity'][-1] for s in samples[sample_type]]
 
@@ -132,8 +124,8 @@ def getSamplesData(dataPath, nSt, nKc, nIc, nStCL, nKcCL, nIcCL):
 
 
 def plotFreqSweeps(sampleName,
-                   ax, x, yP, yD, yPerr, yDerr,
-                   axTitle, yLabel, yLim, xLabel, xLim,
+                   ax, x, yV, yPerr, yD, yDerr,
+                   axTitle, yLabel, yLim, yLabel2, yLim2, xLabel, xLim,
                    curveColor, markerStyle,
                    lineStyle='-', individualData=False, logScale=True):
     def legendLabel():
@@ -150,8 +142,9 @@ def plotFreqSweeps(sampleName,
         ax.set_title(axTitle, size=9, color='crimson')
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
         ax.spines[['top', 'bottom', 'left', 'right']].set_color(axisColor)
-        ax.tick_params(axis='both', colors=axisColor)
-        ax.grid(True, which='both', axis='y', linestyle='-', linewidth=0.5, color='lightsteelblue', alpha=0.5)
+        # ax.tick_params(axis='both', colors=axisColor)
+
+        # ax.grid(False, which='both', axis='y', linestyle='-', linewidth=0.5, color='lightsteelblue', alpha=0.5)
 
         ax.set_xlabel(f'{xLabel}', color=axisColor)
         ax.set_xscale('log' if logScale else 'linear')
@@ -161,6 +154,13 @@ def plotFreqSweeps(sampleName,
         ax.set_yscale('log' if logScale else 'linear')
         ax.set_ylim(yLim)
 
+        axDelta = ax.twinx()
+        axDelta.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0)
+
+        axDelta.set_ylabel(f'{yLabel2}', color=axisColor)
+        axDelta.set_yscale('log' if logScale else 'linear')
+        axDelta.set_ylim(yLim2)
+        # TODO: plot 2 rows each column
         # ax.errorbar(
         #     [x[indexStart_storage], x[indexEnd_storage]], [yP[indexStart_storage], yP[indexEnd_storage]], yerr=0,
         #     color=dotCteMean, alpha=0.75,
@@ -168,15 +168,15 @@ def plotFreqSweeps(sampleName,
         #     capsize=0, lw=1, linestyle='',
         #     label=f'', zorder=4)
         ax.errorbar(
-            x, yP, yPerr,
+            x, yV, yPerr,
             color=curveColor, alpha=.8,
             fmt=markerStyle, markersize=7, mfc=curveColor, mec=curveColor, mew=0.5,
             capsize=3, lw=1, linestyle='',
             label=f'', zorder=3)
         # label=f'{sampleName}_{idSample} | '
         #       + "$\overline{G'} \\approx$" + f'{meanStorage:.0f} ± {storageMeanErr:.0f} ' + '$Pa$',
-        ax.errorbar(
-            x, yD, yDerr,
+        axDelta.errorbar(
+            x[:-6], yD[:-6], yDerr[:-6],
             color=curveColor, alpha=1,
             fmt=markerStyle, markersize=7, mfc='w', mec=curveColor, mew=0.75,
             capsize=3, lw=0.75, linestyle=':',
@@ -228,14 +228,15 @@ def midAxis(color, ax):
 def main(dataPath):
     fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
 
-    fileName = '0WSt_and_Car-ViscoelasticRecovery'
+    fileName = '0WSt_and_Car-ViscoelasticRecovery-DeltaAndViscosity'
     dirSave = Path(*Path(filePath[0]).parts[:Path(filePath[0]).parts.index('data') + 1])
 
     plt.style.use('seaborn-v0_8-ticks')
     fig, axes = plt.subplots(figsize=(18, 7), facecolor='w', ncols=2, nrows=1)
     fig.suptitle(f'Viscoelastic recovery by frequency sweeps assay.')
 
-    yTitle, yLimits = f"Storage (G')" + f' and loss (G") moduli' + f' (Pa)', (1, 2 * 10 ** 5)
+    yTitle, yLimits = f'Complex viscosity (mPa·s)', (2 * 10 ** 1, 3 * 10 ** 6)
+    y2Title, y2Limits = f'tan(δ)', (1 * 10**(-2), 10**1)
     xTitle, xLimits = f'Frequency (Hz)', (0.06, 200)
 
     (st_n, kc_n, ic_n,
@@ -252,17 +253,17 @@ def main(dataPath):
     data = getSamplesData(dataPath, *nSamples)
 
     listBefore = {
-        '10%-0St': ([], [], [], [], []),  # (x_5st, gP_5st, gD_5st)
-        '10%-0St + kCar': ([], [], [], [], []),  # (x_10st, gP_10st, gD_10st)
-        '10%-0St + iCar': ([], [], [], [], []),  # (x_ic, gP_ic, gD_ic)
+        '10%-0St': ([], [], []),  # (x_5st, gP_5st, gD_5st)
+        '10%-0St + kCar': ([], [], []),  # (x_10st, gP_10st, gD_10st)
+        '10%-0St + iCar': ([], [], []),  # (x_ic, gP_ic, gD_ic)
         # '10%-0St/Ca²⁺': ([], [], []),  # (x_kc, gP_kc, gD_kc)
         # '10%-0St + iCar/Ca²⁺': ([], [], []),  # (x_kc, gP_kc, gD_kc)
         # '10%-0St+kCar/Ca²⁺': ([], [], [])  # (x_kc, gP_kc, gD_kc)
     }
     listAfter = {
-        '10%-0St': ([], [], [], [], []),  # (x_5st, gP_5st, gD_5st)
-        '10%-0St + kCar': ([], [], [], [], []),  # (x_10st, gP_10st, gD_10st)
-        '10%-0St + iCar': ([], [], [], [], []),  # (x_ic, gP_ic, gD_ic)
+        '10%-0St': ([], [], []),  # (x_5st, gP_5st, gD_5st)
+        '10%-0St + kCar': ([], [], []),  # (x_10st, gP_10st, gD_10st)
+        '10%-0St + iCar': ([], [], []),  # (x_ic, gP_ic, gD_ic)
         # '10%-0St/Ca²⁺': ([], [], []),  # (x_kc, gP_kc, gD_kc)
         # '10%-0St + iCar/Ca²⁺': ([], [], []),  # (x_kc, gP_kc, gD_kc)
         # '10%-0St+kCar/Ca²⁺': ([], [], [])  # (x_kc, gP_kc, gD_kc)
@@ -271,59 +272,63 @@ def main(dataPath):
     meanBefore, meanAfter = [], []
     meanBeforeErr, meanAfterErr = [], []
 
-    for key, (x, gP, gD, tand_d, visc) in listBefore.items():
+    for key, (x, tan_d, visc) in listBefore.items():
         x.append(data[f'{key}_freq'])
-        gP.append(data[f'{key}_storage'])
-        gD.append(data[f'{key}_loss'])
-        tand_d.append(data[f'{key}_delta'])
+        tan_d.append(data[f'{key}_delta'])
         visc.append(data[f'{key}_viscosity'])
 
-    for key, (x, gP, gD, tand_d, visc) in listAfter.items():
+    for key, (x, tan_d, visc) in listAfter.items():
         x.append(data[f'{key}_freq_broken'])
-        gP.append(data[f'{key}_storage_broken'])
-        gD.append(data[f'{key}_loss_broken'])
-        tand_d.append(data[f'{key}_delta_broken'])
+        tan_d.append(data[f'{key}_delta_broken'])
         visc.append(data[f'{key}_viscosity_broken'])
 
     for k_a, k_b, c in zip(listAfter, listBefore, colors):
-        gP, gD = np.mean(listBefore[k_a][1], axis=1)[0], np.mean(listBefore[k_a][2], axis=1)[0]
-        gPerr, gDerr = np.std(listBefore[k_a][1], axis=1)[0], np.std(listBefore[k_a][2], axis=1)[0]
+        delta, visc = np.mean(listBefore[k_a][1], axis=1)[0], np.mean(listBefore[k_a][2], axis=1)[0]
+        deltaErr, viscErr = np.std(listBefore[k_a][1], axis=1)[0], np.std(listBefore[k_a][2], axis=1)[0]
 
-        meanStorage, storageMeanErr, _, _ = getCteMean(gP)
+        meanStorage, storageMeanErr, _, _ = getCteMean(delta)
         meanBefore.append(meanStorage)
         meanBeforeErr.append(storageMeanErr)
 
         plotFreqSweeps(  # Before axes
             ax=axes[0], x=np.mean(listBefore[k_a][0], axis=1)[0],
-            yP=gP, yD=gD, yPerr=gPerr, yDerr=gDerr,
-            axTitle='Before breakage', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+            yV=visc, yPerr=viscErr,
+            yD=delta, yDerr=deltaErr,
+            axTitle='Before breakage',
+            yLabel=yTitle, yLim=yLimits,
+            yLabel2=y2Title, yLim2=y2Limits,
+            xLabel=xTitle, xLim=xLimits,
             curveColor=c, markerStyle='o',
             sampleName=k_a, logScale=True)
 
-        gP, gD = np.mean(listAfter[k_a][1], axis=1)[0], np.mean(listAfter[k_a][2], axis=1)[0]
-        gPerr, gDerr = np.std(listAfter[k_a][1], axis=1)[0], np.std(listAfter[k_a][2], axis=1)[0]
+        delta, visc = np.mean(listAfter[k_a][1], axis=1)[0], np.mean(listAfter[k_a][2], axis=1)[0]
+        deltaErr, viscErr = np.std(listAfter[k_a][1], axis=1)[0], np.std(listAfter[k_a][2], axis=1)[0]
 
-        meanStorage, storageMeanErr, _, _ = getCteMean(gP)
+        meanStorage, storageMeanErr, _, _ = getCteMean(delta)
         meanAfter.append(meanStorage)
         meanAfterErr.append(storageMeanErr)
 
         plotFreqSweeps(  # After axes
             ax=axes[1], x=np.mean(listAfter[k_a][0], axis=1)[0],
-            yP=gP, yD=gD, yPerr=gPerr, yDerr=gDerr,
-            axTitle='After breakage', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+            yV=visc, yPerr=viscErr,
+            yD=delta, yDerr=deltaErr,
+            axTitle='After breakage',
+            yLabel=yTitle, yLim=yLimits,
+            yLabel2=y2Title, yLim2=y2Limits,
+            xLabel=xTitle, xLim=xLimits,
             curveColor=c, markerStyle='o',
             sampleName=k_a, logScale=True)
 
-    midAxis('slategrey', axes)
+    # midAxis('slategrey', axes)
     # Inset plot (bar plot showing meanStorage)
-    plotInsetMean(
-        data=meanBefore, dataErr=meanBeforeErr,
-        keys=listBefore.keys(), colors=colors, ax=axes[0])
-    plotInsetMean(
-        data=meanAfter, dataErr=meanAfterErr,
-        keys=listBefore.keys(), colors=colors, ax=axes[1])
+    # plotInsetMean(
+    #     data=meanBefore, dataErr=meanBeforeErr,
+    #     keys=listBefore.keys(), colors=colors, ax=axes[0])
+    # plotInsetMean(
+    #     data=meanAfter, dataErr=meanAfterErr,
+    #     keys=listBefore.keys(), colors=colors, ax=axes[1])
 
-    plt.subplots_adjust(wspace=0.0, top=0.93, bottom=0.1, left=0.05, right=0.95)
+    plt.subplots_adjust(wspace=0.25, top=0.93, bottom=0.1, left=0.05, right=0.95)
     # plt.tight_layout()
     plt.show()
     fig.savefig(f'{dirSave}' + f'\\{fileName}' + '.png', facecolor='w', dpi=600)
