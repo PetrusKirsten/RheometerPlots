@@ -76,43 +76,6 @@ def funcTransient(t, tau_0, tau_e, alpha, gamma_dot):
     return tau_e + (tau_0 - tau_e) * np.exp(alpha * gamma_dot * t)
 
 
-def getCteMean(values, tolerance=100):
-    """
-    :param values: to be analysed
-    :param tolerance: the difference betweem two points data
-    :return: the mean of the "cte" region and its indexes
-    """
-    diffs = np.abs(np.diff(values))  # Calcular as diferenças entre valores consecutivos
-
-    constantRegions = diffs < tolerance  # Identificar regiões onde a diferença está abaixo do valor de tolerância
-
-    # Encontrar os índices onde a condição é satisfeita
-    iStart, iEnd = None, None
-    lengthMax, lengthCurrent, currentStart = 0, 0, 0
-    for i, is_constant in enumerate(constantRegions):
-        if is_constant:
-            if lengthCurrent == 0:
-                currentStart = i
-            lengthCurrent += 1
-        else:
-            if lengthCurrent > lengthMax:
-                lengthMax = lengthCurrent
-                iStart = currentStart
-                iEnd = i
-            lengthCurrent = 0
-
-    if lengthCurrent > lengthMax:  # Checar se a última sequência é a maior constante
-        iStart = currentStart
-        iEnd = len(values) - 1
-
-    if iStart is None or iEnd is None:  # Se nenhuma região constante foi encontrada
-        return None, None, None
-
-    mean = np.mean(values[iStart:iEnd + 1])  # Calcular a média da região constante encontrada
-
-    return mean, iStart, iEnd
-
-
 def getSamplesData(dataPath, n5st, nSt, nIc, nKc):
     """
     Reads multiple sample files and categorizes the data into 'cteRate' and 'stepsRate' dictionaries.
@@ -198,7 +161,7 @@ def plotFlow(listRows, nSamples, sampleName,
             ax.errorbar(
                 xPlot, yPlot, yerr=yErr, color=curveColor, alpha=(0.9 - curve * 0.2) if individualData else 0.85,
                 fmt=markerStyle, markersize=7, mec='k', mew=0.5,
-                capsize=3, lw=.5, linestyle='-',  # ecolor='k'
+                capsize=3, lw=.5, linestyle='',  # ecolor='k'
                 label=f'{sampleName}', zorder=3)
         else:
             ax.plot(
@@ -255,23 +218,18 @@ def plotFlow(listRows, nSamples, sampleName,
 def main(dataPath, thixo=False):
     fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
 
-    fileName = '10pct_0WSt_and_Car-Flow'
+    fileName = '0St_Car-Flow'
     dirSave = Path(*Path(filePath[0]).parts[:Path(filePath[0]).parts.index('data') + 1])
 
     st5_nSamples, st10_nSamples, ic_nSamples, kc_nSamples = 1, 2, 2, 2
     constantShear, stepsShear = getSamplesData(dataPath, st5_nSamples, st10_nSamples, ic_nSamples, kc_nSamples)
 
-    xTitle, xLimits = ('Shear rate ($s^{-1}$)', (0.06, 400))
+    xTitle, xLimits = ('Shear rate ($s^{-1}$)', (-3, 315))
     yTitle, yLimits = (f'Shear stress (Pa)', (10**0, 6*10**2))
-    yTitleVisc, yLimitsVisc = f'Viscosity (mPa·s)', (10**2, 3 * 10 ** 6)
     st10_color, ic10_color, kc5_color, kc10_color = 'sandybrown', 'deepskyblue', 'lightpink', 'hotpink'
 
     plt.style.use('seaborn-v0_8-ticks')
-    fig, axes = plt.subplots(figsize=(9, 10), facecolor='w', ncols=1, nrows=2)
-    axesStress, axesVisc = axes[0], axes[1]
-    axesVisc.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0)
-    axesVisc.set_ylabel(f'{yTitleVisc}')
-    axesVisc.set_ylim(yLimitsVisc)
+    fig, axes = plt.subplots(figsize=(9, 7), facecolor='w', ncols=1, nrows=1)
     fig.suptitle(f'Steps shear rate flow')
 
     # Shear rate steps data
@@ -301,56 +259,55 @@ def main(dataPath, thixo=False):
     # Shear stress plot
     tableStress = plotFlow(
         listRows=tableStress, nSamples=st10_nSamples,
-        ax=axesStress, x=x_10st, y=s_10st,
+        ax=axes, x=x_10st, y=s_10st,
         axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
         curveColor=st10_color, markerStyle='o',
-        sampleName=f'10% 0WSt', logScale=True, fit=fitModeStress)
+        sampleName=f'10% 0WSt', fit=fitModeStress)
     tableStress = plotFlow(
         listRows=tableStress, nSamples=ic_nSamples,
-        ax=axesStress, x=x_10ic, y=s_10ic,
+        ax=axes, x=x_10ic, y=s_10ic,
         axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
         curveColor=ic10_color, markerStyle='o',
-        sampleName=f'10% 0WSt iCar', logScale=True, fit=fitModeStress)
-    tableStress = plotFlow(
-        listRows=tableStress, nSamples=st5_nSamples,
-        ax=axesStress, x=x_5kc, y=s_5kc,
-        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
-        curveColor=kc5_color, markerStyle='o',
-        sampleName=f'5% 0WSt kCar', logScale=True, fit=fitModeStress)
+        sampleName=f'10% 0WSt iCar', fit=fitModeStress)
+    # tableStress = plotFlow(
+    #     listRows=tableStress, nSamples=st5_nSamples,
+    #     ax=axes, x=x_5kc, y=s_5kc,
+    #     axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+    #     curveColor=kc5_color, markerStyle='o',
+    #     sampleName=f'5% 0WSt kCar', fit=fitModeStress)
     tableStress = plotFlow(
         listRows=tableStress, nSamples=kc_nSamples,
-        ax=axesStress, x=x_10kc, y=s_10kc,
+        ax=axes, x=x_10kc, y=s_10kc,
         axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
         curveColor=kc10_color, markerStyle='o',
-        sampleName=f'10% 0WSt kCar', logScale=True, fit=fitModeStress)
+        sampleName=f'10% 0WSt kCar', fit=fitModeStress)
 
     # Viscosity plot
-    plotFlow(
-        listRows=[], nSamples=st10_nSamples,
-        ax=axesVisc, x=x_10st, y=v_10st,
-        axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
-        curveColor=st10_color, markerStyle='o',
-        sampleName=f'', logScale=True, fit=fitModeVisc)
-    plotFlow(
-        listRows=[], nSamples=ic_nSamples,
-        ax=axesVisc, x=x_10ic, y=v_10ic,
-        axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
-        curveColor=ic10_color, markerStyle='o',
-        sampleName=f'', logScale=True, fit=fitModeVisc)
-    tableStress = plotFlow(
-        listRows=tableStress, nSamples=st5_nSamples,
-        ax=axesVisc, x=x_5kc, y=v_5kc,
-        axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
-        curveColor=kc5_color, markerStyle='o',
-        sampleName=f'', logScale=True, fit=fitModeVisc)
-    tableStress = plotFlow(
-        listRows=tableStress, nSamples=kc_nSamples,
-        ax=axesVisc, x=x_10kc, y=v_10kc,
-        axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
-        curveColor=kc10_color, markerStyle='o',
-        sampleName=f'', logScale=True, fit=fitModeVisc)
+    # plotFlow(
+    #     listRows=[], nSamples=st10_nSamples,
+    #     ax=axesVisc, x=x_10st, y=v_10st,
+    #     axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
+    #     curveColor=st10_color, markerStyle='o',
+    #     sampleName=f'', logScale=True, fit=fitModeVisc)
+    # plotFlow(
+    #     listRows=[], nSamples=ic_nSamples,
+    #     ax=axesVisc, x=x_10ic, y=v_10ic,
+    #     axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
+    #     curveColor=ic10_color, markerStyle='o',
+    #     sampleName=f'', logScale=True, fit=fitModeVisc)
+    # tableStress = plotFlow(
+    #     listRows=tableStress, nSamples=st5_nSamples,
+    #     ax=axesVisc, x=x_5kc, y=v_5kc,
+    #     axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
+    #     curveColor=kc5_color, markerStyle='o',
+    #     sampleName=f'', logScale=True, fit=fitModeVisc)
+    # tableStress = plotFlow(
+    #     listRows=tableStress, nSamples=kc_nSamples,
+    #     ax=axesVisc, x=x_10kc, y=v_10kc,
+    #     axTitle='', yLabel=yTitleVisc, yLim=yLimitsVisc, xLabel=xTitle, xLim=xLimits,
+    #     curveColor=kc10_color, markerStyle='o',
+    #     sampleName=f'', logScale=True, fit=fitModeVisc)
 
-    axesStress.set_xticklabels([])
     plt.subplots_adjust(hspace=0, wspace=0.200, top=0.940, bottom=0.095, left=0.090, right=0.900)
     # plt.tight_layout()
     plt.show()
@@ -363,8 +320,8 @@ def main(dataPath, thixo=False):
 
 
 if __name__ == '__main__':
-    # folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
-    folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
+    folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
+    # folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
     filePath = [
         #
         folderPath + "/091024/5_0WSt_kCar/5_0WSt_kCar-viscoRecoveryandFlow_1.xlsx",
