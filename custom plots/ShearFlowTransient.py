@@ -50,29 +50,6 @@ def exportFit(
     return rows
 
 
-def funcHB(sigma, k, n, sigmaZero):
-    return sigmaZero + k * (sigma ** n)
-
-
-def funcModHB(gamma_dot, eta_0, tau_0, tau_od, gamma_dot_od, K, n, eta_inf):
-    # First part of the equation
-    exp_term = np.exp(- (eta_0 * gamma_dot) / tau_0)
-    part1 = 1 - exp_term
-
-    # Second part (inside the curly brackets)
-    term1 = (tau_0 - tau_od) / gamma_dot * np.exp(- gamma_dot / gamma_dot_od)
-    term2 = tau_od / gamma_dot
-    term3 = K * gamma_dot ** (n - 1)
-
-    # Combine the second part
-    part2 = term1 + term2 + term3
-
-    # Final equation
-    eta_ss = part1 * part2 + eta_inf
-
-    return eta_ss
-
-
 def funcTransient(t, tau_0, tau_e, time_cte):
     return tau_e + (tau_0 - tau_e) * np.exp(- t / time_cte)
 
@@ -114,7 +91,7 @@ def getCteMean(values, tolerance=100):
     return mean, iStart, iEnd
 
 
-def getSamplesData(dataPath, n5st, nSt, nIc, nKc):
+def getSamplesData(dataPath, nSt, nKc, nIc, nStCL, nKcCL, nIcCL):
     """
     Reads multiple sample files and categorizes the data into 'cteRate' and 'stepsRate' dictionaries.
     """
@@ -144,11 +121,12 @@ def getSamplesData(dataPath, n5st, nSt, nIc, nKc):
         }
 
     # Store data for each sample type
-    samples = {'5% 0WSt kCar': [], '10% 0WSt': [], '10% 0WSt iCar': [], '10% 0WSt kCar': []}
-
+    samples = {'0St': [], '0St + kCar': [], '0St + iCar': [],
+               '0St/CL': [], '0St + kCar/CL': [], '0St + iCar/CL': []}
     # Determine sample types for each path
-    sample_labels = ['5% 0WSt kCar'] * n5st + ['10% 0WSt'] * nSt + ['10% 0WSt iCar'] * nIc + ['10% 0WSt kCar'] * nKc
-
+    sample_labels = (
+            [list(samples.keys())[0]] * nSt + [list(samples.keys())[1]] * nKc + [list(samples.keys())[2]] * nIc +
+            [list(samples.keys())[3]] * nStCL + [list(samples.keys())[4]] * nKcCL + [list(samples.keys())[5]] * nIcCL)
     # Read data and categorize based on sample type
     for sample_type, path in zip(sample_labels, dataPath):
         df = pd.read_excel(path)
@@ -156,20 +134,17 @@ def getSamplesData(dataPath, n5st, nSt, nIc, nKc):
         samples[sample_type].append(segments)
 
     # Initialize dictionaries to hold the results
-    dict_cteRate, dict_stepsRate = {}, {}
+    dict_cteRate = {}
 
     # Populate dictionaries with consolidated sample data
     for sample_type in samples:
         dict_cteRate[f'{sample_type}_time'] = [s['time'][0] for s in samples[sample_type]]
+
         dict_cteRate[f'{sample_type}_rateCte'] = [s['shear_rate'][0] for s in samples[sample_type]]
         dict_cteRate[f'{sample_type}_stressCte'] = [s['shear_stress'][0] for s in samples[sample_type]]
         dict_cteRate[f'{sample_type}_viscosityCte'] = [s['viscosity'][0] for s in samples[sample_type]]
 
-        dict_stepsRate[f'{sample_type}_rateSteps'] = [s['shear_rate'][1] for s in samples[sample_type]]
-        dict_stepsRate[f'{sample_type}_stressSteps'] = [s['shear_stress'][1] for s in samples[sample_type]]
-        dict_stepsRate[f'{sample_type}_viscositySteps'] = [s['viscosity'][1] for s in samples[sample_type]]
-
-    return dict_cteRate, dict_stepsRate
+    return dict_cteRate, list(samples.keys())
 
 
 def plotFlow(listRows, nSamples, sampleName,
@@ -179,11 +154,15 @@ def plotFlow(listRows, nSamples, sampleName,
              individualData=False, fit='', logScale=False):
     def legendLabel():
         """Applies consistent styling to legends in plots."""
-        legend = ax.legend(fancybox=False, frameon=True, framealpha=0.9, fontsize=9)
+        legend = ax.legend(
+            fancybox=False, frameon=True,
+            framealpha=0.9, fontsize=9, ncols=2,
+            loc='lower right'
+        )
         legend.get_frame().set_facecolor('w')
         legend.get_frame().set_edgecolor('whitesmoke')
 
-    def configPlot(idSample, xPlot, yPlot, yErr=0, scatter=True):
+    def configPlot(xPlot, yPlot, yErr=0, scatter=True):
         ax.set_title(axTitle, size=9, color='crimson')
         ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
 
@@ -207,7 +186,7 @@ def plotFlow(listRows, nSamples, sampleName,
                 label=f'{sampleName}', zorder=3)
         else:
             ax.plot(
-                xPlot, yPlot, color='darkgray', linestyle='-.', linewidth=.75,
+                xPlot, yPlot, color=curveColor, linestyle='-.', linewidth=.75,
                 zorder=2)
 
         legendLabel()
@@ -216,7 +195,7 @@ def plotFlow(listRows, nSamples, sampleName,
         for curve in range(nSamples):
             split_index = np.where(x[curve] <= 175)[0][-1]
             x_split, y_split = x[curve][:split_index], y[curve][:split_index]
-            configPlot(curve, x_split, y_split)
+            configPlot(x_split, y_split)
 
             if fit == 'transient':
                 params, covariance = curve_fit(funcTransient, x, y, p0=(10, 1, 0.1, 1),
@@ -230,24 +209,17 @@ def plotFlow(listRows, nSamples, sampleName,
                 #     f'{sampleName}',
                 #     params, errors,
                 #     listRows)
-                configPlot(curve, x_split, y_split)
+                configPlot(x_split, y_split)
 
     else:
-        x_split, y_split = [None, None], [None, None]
+        x_split, y_split = [], []
         for curve in range(nSamples):
             split_index = np.where(x[curve] <= 175)[0][-1]
-            x_split[curve], y_split[curve] = x[curve][:split_index], y[curve][:split_index]
+            x_split.append(x[curve][:split_index]), y_split.append(y[curve][:split_index])
 
-        if sampleName != '5% 0WSt kCar':
-            x_mean = np.mean(x_split, axis=0)
-            y_err = np.std(y_split, axis=0)
-            y_mean = np.mean(y_split, axis=0)
-        else:
-            split_index = np.where(x[0] <= 175)[0][-1]
-            x_split, y_split = x[0][:split_index], y[0][:split_index]
-            x_mean = x_split
-            y_err = 0
-            y_mean = y_split
+        x_mean = np.mean(x_split, axis=0)
+        y_err = np.std(y_split, axis=0)
+        y_mean = np.mean(y_split, axis=0)
 
         if fit == 'transient':
             params, covariance = curve_fit(funcTransient, x_mean, y_mean, p0=(y_mean[0], y_mean[-1], 100))
@@ -255,15 +227,15 @@ def plotFlow(listRows, nSamples, sampleName,
             errors = np.sqrt(np.diag(covariance))
             print(params, errors)
             tau_0, tau_e, t_cte = params
-            x_fit = np.linspace(-10, 300, 620)
+            x_fit = np.linspace(0, 300, 300)
             y_fit = funcTransient(x_fit, tau_0, tau_e, t_cte)
             listRows = exportFit(
                 f'{sampleName}',
                 params, errors,
                 listRows)
-            configPlot(0, x_fit, y_fit, scatter=False)
+            configPlot(x_fit, y_fit, scatter=False)
 
-        configPlot(0, x_mean, y_mean, yErr=y_err)
+        configPlot(x_mean, y_mean, yErr=y_err)
 
     return listRows
 
@@ -271,20 +243,15 @@ def plotFlow(listRows, nSamples, sampleName,
 def main(dataPath):
     fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
 
-    fileName = '10pct_0WSt_and_Car-Thixotropy'
+    fileName = 'St_Car_CL-Thixotropy'
     dirSave = Path(*Path(filePath[0]).parts[:Path(filePath[0]).parts.index('data') + 1])
-
-    st5_nSamples, st10_nSamples, ic_nSamples, kc_nSamples = 1, 2, 2, 2
-    constantShear, stepsShear = getSamplesData(dataPath, st5_nSamples, st10_nSamples, ic_nSamples, kc_nSamples)
-
-    xTitle, xLimits = (f'Time (s)', (-4, 206))
-    yTitle, yLimits = (f'Shear stress (Pa)', (0, 550))
-    yTitleVisc, yLimitsVisc = f'Viscosity (mPa·s)', (yLimits[0] * 3.33, yLimits[1] * 3.33)
-    st10_color, ic10_color, kc5_color, kc10_color = 'sandybrown', 'deepskyblue', 'lightpink', 'hotpink'
 
     fig, axesStress = plt.subplots(figsize=(12, 7), facecolor='w', ncols=1, nrows=1)
     fig.suptitle(f'Constant shear rate flow')
     plt.style.use('seaborn-v0_8-ticks')
+    xTitle, xLimits = (f'Time (s)', (0, 240))
+    yTitle, yLimits = (f'Shear stress (Pa)', (0, 550))
+    yTitleVisc, yLimitsVisc = f'Viscosity (mPa·s)', (yLimits[0] * 3.33, yLimits[1] * 3.33)
 
     axesVisc = axesStress.twinx()
     axesVisc.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0)
@@ -293,55 +260,63 @@ def main(dataPath):
     axesVisc.yaxis.set_major_locator(MultipleLocator(200))
     axesVisc.yaxis.set_minor_locator(MultipleLocator(50))
 
-    # Shear rate cte data
+    (st_n, kc_n, ic_n,
+     stCL_n, kcCL_n, icCL_n) = (2, 2, 2,
+                                3, 1, 3)
+    nSamples = (st_n, kc_n, ic_n,
+                stCL_n, kcCL_n, icCL_n)
+
+    (st_color, kc_color, ic_color,
+     stCL_color, kcCL_color, icCL_color) = ('sandybrown', 'hotpink', 'deepskyblue',
+                                            'chocolate', 'mediumvioletred', 'steelblue')
+    colors = (st_color, kc_color, ic_color,
+              stCL_color, kcCL_color, icCL_color)
+
+    constantShear, sampleLabels = getSamplesData(dataPath, *nSamples)
+
     fitModeStress, fitModeVisc = 'transient', ''
-    (x_10st, s_10st, v_10st,
-     x_10ic, s_10ic, v_10ic,
-     x_5kc, s_5kc, v_5kc,
-     x_10kc, s_10kc, v_10kc) = (
+
+    (x_st, s_st,
+     x_kc, s_kc,
+     x_ic, s_ic,
+     x_stCL, s_stCL,
+     x_kcCL, s_kcCL,
+     x_icCL, s_icCL) = (
         # 10% starch
-        constantShear['10% 0WSt_time'],
-        constantShear['10% 0WSt_stressCte'],
-        constantShear['10% 0WSt_viscosityCte'],
-        # 10% starch + iota
-        constantShear['10% 0WSt iCar_time'],
-        constantShear['10% 0WSt iCar_stressCte'],
-        constantShear['10% 0WSt iCar_viscosityCte'],
-        # 5% starch + kappa
-        constantShear['5% 0WSt kCar_time'],
-        constantShear['5% 0WSt kCar_stressCte'],
-        constantShear['5% 0WSt kCar_viscosityCte'],
+        constantShear[f'{sampleLabels[0]}_time'],
+        constantShear[f'{sampleLabels[0]}_stressCte'],
         # 10% starch + kappa
-        constantShear['10% 0WSt kCar_time'],
-        constantShear['10% 0WSt kCar_stressCte'],
-        constantShear['10% 0WSt kCar_viscosityCte'])
+        constantShear[f'{sampleLabels[1]}_time'],
+        constantShear[f'{sampleLabels[1]}_stressCte'],
+        # 10% starch + iota
+        constantShear[f'{sampleLabels[2]}_time'],
+        constantShear[f'{sampleLabels[2]}_stressCte'],
+        # 10% starch CL
+        constantShear[f'{sampleLabels[3]}_time'],
+        constantShear[f'{sampleLabels[3]}_stressCte'],
+        # 10% starch + kappa CL
+        constantShear[f'{sampleLabels[4]}_time'],
+        constantShear[f'{sampleLabels[4]}_stressCte'],
+        # 10% starch + iota CL
+        constantShear[f'{sampleLabels[5]}_time'],
+        constantShear[f'{sampleLabels[5]}_stressCte'],)
+
+    data = [(x_st, s_st),
+            (x_kc, s_kc),
+            (x_ic, s_ic),
+            (x_stCL, s_stCL),
+            (x_kcCL, s_kcCL),
+            (x_icCL, s_icCL)]
 
     tableStress = []
-    # Shear stress plot
-    tableStress = plotFlow(
-        listRows=tableStress, nSamples=st10_nSamples,
-        ax=axesStress, x=x_10st, y=s_10st,  # initialGuess=(s_10st[0], s_10st[-1], 100),  # tau_0, tau_e, time_cte
-        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
-        curveColor=st10_color, markerStyle='o',
-        sampleName=f'10% 0WSt', logScale=False, fit=fitModeStress)
-    tableStress = plotFlow(
-        listRows=tableStress, nSamples=ic_nSamples,
-        ax=axesStress, x=x_10ic, y=s_10ic,  # initialGuess=(s_10ic[0], s_10ic[-1], 100),
-        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
-        curveColor=ic10_color, markerStyle='o',
-        sampleName=f'10% 0WSt iCar', logScale=False, fit=fitModeStress)
-    tableStress = plotFlow(
-        listRows=tableStress, nSamples=st5_nSamples,
-        ax=axesStress, x=x_5kc, y=s_5kc,  # initialGuess=(s_5kc[0], s_5kc[-1], 100),
-        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
-        curveColor=kc5_color, markerStyle='o',
-        sampleName=f'5% 0WSt kCar', logScale=False, fit=fitModeStress)
-    tableStress = plotFlow(
-        listRows=tableStress, nSamples=kc_nSamples,
-        ax=axesStress, x=x_10kc, y=s_10kc,  # initialGuess=(s_10kc[0], s_10kc[-1], 100),
-        axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
-        curveColor=kc10_color, markerStyle='o',
-        sampleName=f'10% 0WSt kCar', logScale=False, fit=fitModeStress)
+
+    for i in range(len(data)):
+        tableStress = plotFlow(
+            listRows=tableStress, nSamples=nSamples[i],
+            ax=axesStress, x=data[i][0], y=data[i][1],
+            axTitle='', yLabel=yTitle, yLim=yLimits, xLabel=xTitle, xLim=xLimits,
+            curveColor=colors[i], markerStyle='o',
+            sampleName=f'{sampleLabels[i]}', fit=fitModeStress)
 
     plt.subplots_adjust(
         hspace=0,
@@ -365,19 +340,28 @@ if __name__ == '__main__':
     # folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
     filePath = [
         #
-        folderPath + "/091024/5_0WSt_kCar/5_0WSt_kCar-viscoRecoveryandFlow_1.xlsx",
-        #
         folderPath + "/031024/10_0WSt/10_0WSt-viscRec_1.xlsx",
         folderPath + "/031024/10_0WSt/10_0WSt-viscRec_2.xlsx",
+        #
+        folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_2a.xlsx",
+        folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_3a.xlsx",
         #
         # folderPath + "10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_1.xlsx",
         folderPath + "/031024/10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_2.xlsx",
         # folderPath + "/031024/10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_3.xlsx",
         folderPath + "/031024/10_0WSt_iCar/10_0WSt_iCar-viscoRecoveryandFlow_4.xlsx",
-        #
-        folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_2a.xlsx",
-        folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_3a.xlsx",
         # folderPath + "/091024/10_0WSt_kCar/10_0WSt_kCar-viscoelasticRecovery-Flow_4a.xlsx",
+        #
+        folderPath + "/171024/10_0St_CL/10_0St_CL-recovery-1.xlsx",
+        folderPath + "/171024/10_0St_CL/10_0St_CL-recovery-2.xlsx",
+        folderPath + "/171024/10_0St_CL/10_0St_CL-recovery-3.xlsx",
+        #
+        folderPath + "/171024/10_0St_kC_CL/10_0St_kC_CL-recovery-1.xlsx",
+        # folderPath + "/171024/10_0St_kC_CL/10_0St_CL-recovery-2.xlsx",
+        #
+        folderPath + "/171024/10_0St_iC_CL/10_0St_iC_CL-recovery-1.xlsx",
+        folderPath + "/171024/10_0St_iC_CL/10_0St_iC_CL-recovery-2.xlsx",
+        folderPath + "/171024/10_0St_iC_CL/10_0St_iC_CL-recovery-3.xlsx",
     ]
 
     main(dataPath=filePath)

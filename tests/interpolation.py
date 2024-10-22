@@ -16,9 +16,23 @@ shear_rate_2 = np.array([
 
 # Shear stress values for the second dataset
 shear_stress_2 = np.array([
-    313.7582397, 308.8881836, 303.3536072, 298.8374023, 293.8954468,
-    288.7720947, 283.3571472, 277.1744995, 270.3498535, 261.8699646,
-    251.9655762, 239.8863525, 223.6357117, 197.865921, 114.6323318])
+    317.5632019,
+    314.2151794,
+    310.6622314,
+    306.3730164,
+    303.6496887,
+    297.421875,
+    290.9877625,
+    283.9788818,
+    275.9553833,
+    266.9515686,
+    256.374176,
+    243.0905151,
+    226.1122437,
+    199.0961761,
+    106.0923233
+
+])
 
 # Interpolation function (linear interpolation) for the second dataset
 interpolation_function = interp1d(shear_rate_2, shear_stress_2, kind='linear', fill_value="extrapolate")
@@ -29,7 +43,8 @@ interpolated_shear_stress = interpolation_function(shear_rate_1)
 # Output interpolated shear stress results
 print("Interpolated Shear Stress Results (from 2nd dataset) for the First Dataset's Shear Rates:")
 for sr, ss in zip(shear_rate_1, interpolated_shear_stress):
-    print(f"Shear rate: {sr:.4f} 1/s, Estimated shear stress: {ss:.4f} Pa")
+    print(f"{ss}")
+    # print(f"Shear rate: {sr:.4f} 1/s, Estimated shear stress: {ss:.4f} Pa")
 
 # Optional: Plotting the original second dataset and the interpolated results
 plt.figure(figsize=(10, 6))
@@ -39,6 +54,6 @@ plt.xlabel("Shear Rate (1/s)")
 plt.ylabel("Shear Stress (Pa)")
 plt.title("Interpolated Shear Stress for First Dataset's Shear Rates (from Second Dataset)")
 plt.legend()
-plt.xscale('log')
+plt.xscale('linear')
 plt.grid(True)
 plt.show()

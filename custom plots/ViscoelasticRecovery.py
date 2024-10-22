@@ -31,6 +31,10 @@ def fonts(folder_path, s=10, m=12):
     plt.rc('figure', titlesize=m)  # fontsize of the figure title
 
 
+def powerLaw(gP, kPrime, nPrime):
+    return kPrime * (gP ** nPrime)
+
+
 def getCteMean(values, tolerance=50):
     """
     :param values: to be analysed

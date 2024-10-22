@@ -134,15 +134,19 @@ def plotFreqSweeps(nSamples, sampleName,
     def configPlot(idSample=0):
         cteMean, cteMeanErr, indexStart_mean, indexEnd_mean = getCteMean(y)
         dotCteMean = 'k'
+        graphColor = 'darkgray'
         idSample = idSample + 1 if individualData else ''
         ax.set_title(axTitle, size=9, color='crimson')
-        ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(1.2)
+        ax.spines[['top', 'bottom', 'left', 'right']].set_color(graphColor)
+        ax.tick_params(axis='both', which='both', length=0, labelcolor=graphColor)
+        ax.grid(True, which='both', axis='both', linestyle=':', linewidth=1, color='darkgray', alpha=0.5)
 
-        ax.set_xlabel(f'{xLabel}')
+        ax.set_xlabel(f'{xLabel}', color=graphColor)
         ax.set_xscale('log' if logScale else 'linear')
         ax.set_xlim(xLim)
 
-        ax.set_ylabel(f'{yLabel}')
+        ax.set_ylabel(f'{yLabel}', color=graphColor)
         ax.set_yscale('log' if logScale else 'linear')
         ax.set_ylim(yLim)
 
@@ -155,9 +159,9 @@ def plotFreqSweeps(nSamples, sampleName,
 
         ax.errorbar(
             x, y, yerr,
-            color=curveColor, alpha=(0.9 - curve * 0.2) if individualData else .98,
-            fmt=markerStyle, markersize=7, mfc=markerFColor, mec=markerEColor, mew=markerEWidth,
-            capsize=3, lw=1, linestyle=lineStyle,
+            color=curveColor, alpha=(0.9 - curve * 0.2) if individualData else .75,
+            fmt='o', markersize=7, mfc=markerFColor, mec=markerEColor, mew=markerEWidth,
+            capsize=3, lw=1, linestyle='',
             label=f'{sampleName} | '
                   + "$\overline{G'} \\approx$" + f'{cteMean:.0f} ± {cteMeanErr:.0f} ' + '$Pa$',
             zorder=3)
@@ -189,7 +193,7 @@ def main(dataPath):
     yTitle, yLimits = f"Storage (G') (Pa)", (4*10**2, 2*10**4)
     # yTitle, yLimits = f"Storage (G')" + f' and loss (G") moduli' + f' (Pa)', (7, 1.5*10**4)
     xTitle, xLimits = f'Frequency (Hz)', (0.07, 130)
-    powderColor, sol5minColor, sol25minColor = 'aquamarine', 'hotpink', 'dodgerblue'
+    powderColor, sol5minColor, sol25minColor = 'mediumaquamarine', 'hotpink', 'dodgerblue'
 
     data = getSamplesData(dataPath, 2, 2, 2)
 
