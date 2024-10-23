@@ -123,9 +123,11 @@ def getSamplesData(dataPath, nSt, nKc, nIc, nStCL, nKcCL, nIcCL):
     return dict_freqSweeps
 
 
-def plotFreqSweeps(sampleName,
-                   ax, x, yV, yPerr, yD, yDerr,
-                   axTitle, yLabel, yLim, yLabel2, yLim2, xLabel, xLim,
+def plotFreqSweeps(sampleName, ax, axTitle,
+                   x, yV, yPerr, yD, yDerr,
+                   yLabel, yLim,
+                   yLabel2, yLim2,
+                   xLabel, xLim,
                    curveColor, markerStyle,
                    lineStyle='-', individualData=False, logScale=True):
     def legendLabel():
@@ -135,53 +137,51 @@ def plotFreqSweeps(sampleName,
         legend.get_frame().set_edgecolor('whitesmoke')
 
     def configPlot(idSample=0):
-        dotCteMean = 'k'
         idSample = idSample + 1 if individualData else 'Mean'
         axisColor = '#383838'
 
-        ax.set_title(axTitle, size=9, color='crimson')
-        ax.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-        ax.spines[['top', 'bottom', 'left', 'right']].set_color(axisColor)
+        axVisc, axTan = ax[0], ax[1]
+
+        axVisc.set_title(axTitle, size=9, color='crimson')
+        axVisc.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        axVisc.spines[['top', 'bottom', 'left', 'right']].set_color(axisColor)
         # ax.tick_params(axis='both', colors=axisColor)
 
-        # ax.grid(False, which='both', axis='y', linestyle='-', linewidth=0.5, color='lightsteelblue', alpha=0.5)
+        axVisc.grid(False, which='both', axis='y', linestyle='-', linewidth=0.5, color='lightsteelblue', alpha=0.5)
+        axTan.grid(False, which='both', axis='y', linestyle='-', linewidth=0.5, color='lightsteelblue', alpha=0.5)
 
-        ax.set_xlabel(f'{xLabel}', color=axisColor)
-        ax.set_xscale('log' if logScale else 'linear')
-        ax.set_xlim(xLim)
+        axTan.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        axVisc.set_xlabel(f'{xLabel}', color=axisColor)
+        axVisc.set_xscale('log' if logScale else 'linear')
+        axVisc.set_xlim(xLim)
 
-        ax.set_ylabel(f'{yLabel}', color=axisColor)
-        ax.set_yscale('log' if logScale else 'linear')
-        ax.set_ylim(yLim)
+        axVisc.set_ylabel(f'{yLabel}', color=axisColor)
+        axVisc.set_yscale('log' if logScale else 'linear')
+        axVisc.set_ylim(yLim)
 
-        axDelta = ax.twinx()
-        axDelta.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0)
-
-        axDelta.set_ylabel(f'{yLabel2}', color=axisColor)
-        axDelta.set_yscale('log' if logScale else 'linear')
-        axDelta.set_ylim(yLim2)
-        # TODO: plot 2 rows each column
-        # ax.errorbar(
-        #     [x[indexStart_storage], x[indexEnd_storage]], [yP[indexStart_storage], yP[indexEnd_storage]], yerr=0,
-        #     color=dotCteMean, alpha=0.75,
-        #     fmt='.', markersize=4, mfc=dotCteMean, mec=dotCteMean, mew=1,
-        #     capsize=0, lw=1, linestyle='',
-        #     label=f'', zorder=4)
-        ax.errorbar(
+        axVisc.errorbar(
             x, yV, yPerr,
             color=curveColor, alpha=.8,
             fmt=markerStyle, markersize=7, mfc=curveColor, mec=curveColor, mew=0.5,
             capsize=3, lw=1, linestyle='',
             label=f'', zorder=3)
-        # label=f'{sampleName}_{idSample} | '
-        #       + "$\overline{G'} \\approx$" + f'{meanStorage:.0f} ± {storageMeanErr:.0f} ' + '$Pa$',
-        axDelta.errorbar(
-            x[:-6], yD[:-6], yDerr[:-6],
-            color=curveColor, alpha=1,
+
+        axTan.set_xlabel(f'{xLabel}', color=axisColor)
+        axTan.set_xscale('log' if logScale else 'linear')
+        axTan.set_xlim(xLim)
+
+        axTan.set_ylabel(f'{yLabel2}', color=axisColor)
+        axTan.set_yscale('log' if logScale else 'linear')
+        axTan.set_ylim(yLim2)
+
+        axTan.errorbar(
+            x, yD, yDerr,
+            color=curveColor, alpha=.8,
             fmt=markerStyle, markersize=7, mfc='w', mec=curveColor, mew=0.75,
-            capsize=3, lw=0.75, linestyle=':',
+            capsize=3, lw=0.75, linestyle='',
             zorder=3)
-        legendLabel()
+
+        # legendLabel()
 
     configPlot()
 
@@ -219,10 +219,16 @@ def plotInsetMean(data, dataErr, keys, colors, ax):
 
 
 def midAxis(color, ax):
-    ax[0].spines['right'].set_color(color)
-    ax[1].spines['left'].set_color(color)
-    ax[1].yaxis.tick_right()
-    ax[1].yaxis.set_label_position('right')
+    # ax[0].spines['right'].set_color(color)
+    # ax[1].spines['left'].set_color(color)
+
+    ax[0, 1].yaxis.tick_right()
+    ax[0, 1].yaxis.set_label_position('right')
+    ax[1, 1].yaxis.tick_right()
+    ax[1, 1].yaxis.set_label_position('right')
+
+    ax[0, 0].tick_params(axis='x', which='both', direction='in')
+    ax[0, 1].tick_params(axis='x', which='both', direction='in')
 
 
 def main(dataPath):
@@ -232,10 +238,10 @@ def main(dataPath):
     dirSave = Path(*Path(filePath[0]).parts[:Path(filePath[0]).parts.index('data') + 1])
 
     plt.style.use('seaborn-v0_8-ticks')
-    fig, axes = plt.subplots(figsize=(18, 7), facecolor='w', ncols=2, nrows=1)
+    fig, axes = plt.subplots(figsize=(18, 10), facecolor='w', ncols=2, nrows=2)
     fig.suptitle(f'Viscoelastic recovery by frequency sweeps assay.')
 
-    yTitle, yLimits = f'Complex viscosity (mPa·s)', (2 * 10 ** 1, 3 * 10 ** 6)
+    yTitle, yLimits = f'Complex viscosity (mPa·s)', (10**3, 4*10**6)
     y2Title, y2Limits = f'tan(δ)', (1 * 10**(-2), 10**1)
     xTitle, xLimits = f'Frequency (Hz)', (0.06, 200)
 
@@ -291,7 +297,7 @@ def main(dataPath):
         meanBeforeErr.append(storageMeanErr)
 
         plotFreqSweeps(  # Before axes
-            ax=axes[0], x=np.mean(listBefore[k_a][0], axis=1)[0],
+            ax=axes[:, 0], x=np.mean(listBefore[k_a][0], axis=1)[0],
             yV=visc, yPerr=viscErr,
             yD=delta, yDerr=deltaErr,
             axTitle='Before breakage',
@@ -309,7 +315,7 @@ def main(dataPath):
         meanAfterErr.append(storageMeanErr)
 
         plotFreqSweeps(  # After axes
-            ax=axes[1], x=np.mean(listAfter[k_a][0], axis=1)[0],
+            ax=axes[:, 1], x=np.mean(listAfter[k_a][0], axis=1)[0],
             yV=visc, yPerr=viscErr,
             yD=delta, yDerr=deltaErr,
             axTitle='After breakage',
@@ -319,7 +325,7 @@ def main(dataPath):
             curveColor=c, markerStyle='o',
             sampleName=k_a, logScale=True)
 
-    # midAxis('slategrey', axes)
+    midAxis('#383838', axes)
     # Inset plot (bar plot showing meanStorage)
     # plotInsetMean(
     #     data=meanBefore, dataErr=meanBeforeErr,
@@ -328,7 +334,7 @@ def main(dataPath):
     #     data=meanAfter, dataErr=meanAfterErr,
     #     keys=listBefore.keys(), colors=colors, ax=axes[1])
 
-    plt.subplots_adjust(wspace=0.25, top=0.93, bottom=0.1, left=0.05, right=0.95)
+    plt.subplots_adjust(wspace=0.0, hspace=0.0, top=0.93, bottom=0.1, left=0.05, right=0.95)
     # plt.tight_layout()
     plt.show()
     fig.savefig(f'{dirSave}' + f'\\{fileName}' + '.png', facecolor='w', dpi=600)
@@ -337,8 +343,8 @@ def main(dataPath):
 
 
 if __name__ == '__main__':
-    # folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
-    folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
+    folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
+    # folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
     filePath = [
         folderPath + "/031024/10_0WSt/10_0WSt-viscRec_1.xlsx",
         folderPath + "/031024/10_0WSt/10_0WSt-viscRec_2.xlsx",
