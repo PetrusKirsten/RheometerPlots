@@ -128,62 +128,53 @@ def plotFreqSweeps(sampleName, ax, axTitle,
                    yLabel, yLim,
                    yLabel2, yLim2,
                    xLabel, xLim,
-                   curveColor, markerStyle,
-                   lineStyle='-', individualData=False, logScale=True):
-    def legendLabel():
-        """Applies consistent styling to legends in plots."""
-        legend = ax.legend(fancybox=False, frameon=True, framealpha=0.9, fontsize=9)
-        legend.get_frame().set_facecolor('w')
-        legend.get_frame().set_edgecolor('whitesmoke')
+                   curveColor, logScale=True):
 
-    def configPlot(idSample=0):
-        idSample = idSample + 1 if individualData else 'Mean'
-        axisColor = '#383838'
+    def configPlot(axisColor='#383838'):
+        axes_visc, axes_tan = ax[0], ax[1]
 
-        axVisc, axTan = ax[0], ax[1]
-
-        axVisc.set_title(axTitle, size=9, color='crimson')
-        axVisc.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-        axVisc.spines[['top', 'bottom', 'left', 'right']].set_color(axisColor)
+        axes_visc.set_title(axTitle, size=9, color='crimson')
+        axes_visc.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        axes_visc.spines[['top', 'bottom', 'left', 'right']].set_color(axisColor)
         # ax.tick_params(axis='both', colors=axisColor)
 
-        axVisc.grid(False, which='both', axis='y', linestyle='-', linewidth=0.5, color='lightsteelblue', alpha=0.5)
-        axTan.grid(False, which='both', axis='y', linestyle='-', linewidth=0.5, color='lightsteelblue', alpha=0.5)
+        axes_visc.grid(True, which='both', axis='y', linestyle='-', linewidth=0.5, color='lightgrey', alpha=0.5)
+        axes_tan.grid(True, which='both', axis='y', linestyle='-', linewidth=0.5, color='lightgrey', alpha=0.5)
 
-        axTan.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
-        axVisc.set_xlabel(f'{xLabel}', color=axisColor)
-        axVisc.set_xscale('log' if logScale else 'linear')
-        axVisc.set_xlim(xLim)
+        axes_tan.spines[['top', 'bottom', 'left', 'right']].set_linewidth(0.75)
+        axes_visc.set_xlabel(f'{xLabel}', color=axisColor)
+        axes_visc.set_xscale('log' if logScale else 'linear')
+        axes_visc.set_xlim(xLim)
 
-        axVisc.set_ylabel(f'{yLabel}', color=axisColor)
-        axVisc.set_yscale('log' if logScale else 'linear')
-        axVisc.set_ylim(yLim)
+        axes_visc.set_ylabel(f'{yLabel}', color=axisColor)
+        axes_visc.set_yscale('log' if logScale else 'linear')
+        axes_visc.set_ylim(yLim)
 
-        axVisc.errorbar(
-            x, yV, yPerr,
-            color=curveColor, alpha=.8,
-            fmt=markerStyle, markersize=7, mfc=curveColor, mec=curveColor, mew=0.5,
-            capsize=3, lw=1, linestyle='',
-            label=f'', zorder=3)
+        axes_tan.set_xlabel(f'{xLabel}', color=axisColor)
+        axes_tan.set_xscale('log' if logScale else 'linear')
+        axes_tan.set_xlim(xLim)
 
-        axTan.set_xlabel(f'{xLabel}', color=axisColor)
-        axTan.set_xscale('log' if logScale else 'linear')
-        axTan.set_xlim(xLim)
+        axes_tan.set_ylabel(f'{yLabel2}', color=axisColor)
+        axes_tan.set_yscale('log' if logScale else 'linear')
+        axes_tan.set_ylim(yLim2)
 
-        axTan.set_ylabel(f'{yLabel2}', color=axisColor)
-        axTan.set_yscale('log' if logScale else 'linear')
-        axTan.set_ylim(yLim2)
+        return axes_visc, axes_tan
 
-        axTan.errorbar(
-            x, yD, yDerr,
-            color=curveColor, alpha=.8,
-            fmt=markerStyle, markersize=7, mfc='w', mec=curveColor, mew=0.75,
-            capsize=3, lw=0.75, linestyle='',
-            zorder=3)
+    axVisc, axTan = configPlot()
 
-        # legendLabel()
+    axVisc.errorbar(
+        x, yV, yPerr,
+        color=curveColor, alpha=.8,
+        fmt='o', markersize=7, mfc=curveColor, mec=curveColor, mew=1.,
+        capsize=3, lw=1, linestyle='',
+        label=f'{sampleName}', zorder=3)
 
-    configPlot()
+    axTan.errorbar(
+        x, yD, yDerr,
+        color=curveColor, alpha=.8,
+        fmt='s', markersize=7, mfc=curveColor, mec=curveColor, mew=1,
+        capsize=3, lw=1, linestyle='',
+        zorder=3)
 
 
 def plotInsetMean(data, dataErr, keys, colors, ax):
@@ -221,7 +212,6 @@ def plotInsetMean(data, dataErr, keys, colors, ax):
 def midAxis(color, ax):
     # ax[0].spines['right'].set_color(color)
     # ax[1].spines['left'].set_color(color)
-
     ax[0, 1].yaxis.tick_right()
     ax[0, 1].yaxis.set_label_position('right')
     ax[1, 1].yaxis.tick_right()
@@ -229,6 +219,12 @@ def midAxis(color, ax):
 
     ax[0, 0].tick_params(axis='x', which='both', direction='in')
     ax[0, 1].tick_params(axis='x', which='both', direction='in')
+
+
+def legendLabel(ax):
+    legend = ax[0, 1].legend(fancybox=False, frameon=True, framealpha=0.9, fontsize=9)
+    legend.get_frame().set_facecolor('w')
+    legend.get_frame().set_edgecolor('whitesmoke')
 
 
 def main(dataPath):
@@ -297,15 +293,15 @@ def main(dataPath):
         meanBeforeErr.append(storageMeanErr)
 
         plotFreqSweeps(  # Before axes
-            ax=axes[:, 0], x=np.mean(listBefore[k_a][0], axis=1)[0],
+            ax=axes[:, 0], sampleName=k_a,
+            x=np.mean(listBefore[k_a][0], axis=1)[0],
             yV=visc, yPerr=viscErr,
             yD=delta, yDerr=deltaErr,
             axTitle='Before breakage',
             yLabel=yTitle, yLim=yLimits,
             yLabel2=y2Title, yLim2=y2Limits,
             xLabel=xTitle, xLim=xLimits,
-            curveColor=c, markerStyle='o',
-            sampleName=k_a, logScale=True)
+            curveColor=c, logScale=True)
 
         delta, visc = np.mean(listAfter[k_a][1], axis=1)[0], np.mean(listAfter[k_a][2], axis=1)[0]
         deltaErr, viscErr = np.std(listAfter[k_a][1], axis=1)[0], np.std(listAfter[k_a][2], axis=1)[0]
@@ -315,17 +311,20 @@ def main(dataPath):
         meanAfterErr.append(storageMeanErr)
 
         plotFreqSweeps(  # After axes
-            ax=axes[:, 1], x=np.mean(listAfter[k_a][0], axis=1)[0],
+            ax=axes[:, 1], sampleName=k_a,
+            x=np.mean(listAfter[k_a][0], axis=1)[0],
             yV=visc, yPerr=viscErr,
             yD=delta, yDerr=deltaErr,
             axTitle='After breakage',
             yLabel=yTitle, yLim=yLimits,
             yLabel2=y2Title, yLim2=y2Limits,
             xLabel=xTitle, xLim=xLimits,
-            curveColor=c, markerStyle='o',
-            sampleName=k_a, logScale=True)
+            curveColor=c, logScale=True)
+
+    legendLabel(axes)
 
     midAxis('#383838', axes)
+
     # Inset plot (bar plot showing meanStorage)
     # plotInsetMean(
     #     data=meanBefore, dataErr=meanBeforeErr,
@@ -334,8 +333,7 @@ def main(dataPath):
     #     data=meanAfter, dataErr=meanAfterErr,
     #     keys=listBefore.keys(), colors=colors, ax=axes[1])
 
-    plt.subplots_adjust(wspace=0.0, hspace=0.0, top=0.93, bottom=0.1, left=0.05, right=0.95)
-    # plt.tight_layout()
+    plt.subplots_adjust(wspace=0.0, hspace=0.0, top=0.92, bottom=0.08, left=0.05, right=0.95)
     plt.show()
     fig.savefig(f'{dirSave}' + f'\\{fileName}' + '.png', facecolor='w', dpi=600)
 
