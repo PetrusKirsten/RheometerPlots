@@ -101,11 +101,9 @@ def getSamplesData(dataPath, nSt, nKc, nIc, nStCL, nKcCL, nIcCL):
             'viscosity': segments(viscosity)
         }
 
-    # Store data for each sample type
     samples = {'0St': [], '0St + kCar': [], '0St + iCar': [],
                '0St/CL': [], '0St + kCar/CL': [], '0St + iCar/CL': []}
 
-    # Determine sample types for each path
     sample_labels = (
             [list(samples.keys())[0]] * nSt + [list(samples.keys())[1]] * nKc + [list(samples.keys())[2]] * nIc +
             [list(samples.keys())[3]] * nStCL + [list(samples.keys())[4]] * nKcCL + [list(samples.keys())[5]] * nIcCL
