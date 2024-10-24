@@ -271,7 +271,7 @@ def main(dataPath, fileName):
     nSamples, colorSamples = getSamplesInfos(
         2, 3, 3,
         2, 3,
-        2, 4,
+        3, 4,
         'sandybrown', 'hotpink', 'deepskyblue',
         'chocolate', 'steelblue',
         'lightcoral', 'crimson')
@@ -388,7 +388,7 @@ if __name__ == '__main__':
 
         # kC
         folderPath + "/231024/kC/kC-viscoelasticRecovery-1.xlsx",
-        # folderPath + "/231024/kC/kC-viscoelasticRecovery-2.xlsx", TODO: buscar dados corrigidos
+        folderPath + "/231024/kC/kC-viscoelasticRecovery-2.xlsx",
         folderPath + "/231024/kC/kC-viscoelasticRecovery-3.xlsx",
 
         # kC/CL
