@@ -42,47 +42,72 @@ def arraySplit(xArr, yArr, startValue, endValue):
     return xArr[startIndex:endIndex], yArr[startIndex:endIndex]
 
 
-def getSamplesData(dataPath, n5st=0, n10St=0, nIc=0, n5Kc=0, n10Kc=1):
+def getSamplesInfos(
+        # quantites
+        stCL_n, st_kcCL_n, st_icCL_n,
+        kc_n, kcCL_n,
+        # colors
+        stCL_color, st_kcCL_color, st_icCL_color,
+        kc_color, kcCL_color
+):
+    number_samples = [
+        stCL_n, st_kcCL_n, st_icCL_n,
+        kc_n, kcCL_n]
+
+    colors_samples = [
+        stCL_color,  st_kcCL_color, st_icCL_color,
+        kc_color, kcCL_color]
+
+    return number_samples, colors_samples
+
+
+def getSamplesData(
+        dataPath,
+        number_samples
+):
     def getSegments(dataframe):
         time = dataframe['t in s'].to_numpy()
         height = dataframe['h in mm'].to_numpy()
         force = dataframe['Fn in N'].to_numpy()
 
-        seg2, seg3, seg4 = (  # Identifying the job segments in the lists
-            dataframe.index[dataframe['SegIndex'] == seg].to_list()[0] for seg in ['1|1', '11|1', '12|1'])
-        segments = lambda arr: (arr[seg2:seg3])  # Slice segments
-        segmentsBreakage = lambda arr: (arr[seg3:seg4])  # Slice segments
+        seg_init, seg_end = (  # Identifying the job segments in the lists
+            dataframe.index[dataframe['SegIndex'] == seg].to_list()[0] for seg in ['62|1', '62|98'])
+
+        segmentsBreakage = lambda arr: (arr[seg_init:seg_end])  # Slice segments
 
         return {
-            'time': segments(time) - segments(time)[0],
-            'height': (1 - segments(height) / segments(height).max())*100,
-            'force': segments(force),
             'time to break': segmentsBreakage(time) - segmentsBreakage(time)[0],
             'height to break': (1 - segmentsBreakage(height) / segmentsBreakage(height).max())*100,
             'force to break': segmentsBreakage(force)}
 
-    samples = {'10% WSt kCar': []}  # Store data for each sample type
-    sample_labels = ['10% WSt kCar'] * n10Kc  # Determine sample types for each path
-
+    samples = {
+        '10%-0St/CL': [], '10%-0St + kCar/CL': [], '10%-0St + iCar/CL': [],
+        'kCar': [], 'kCar/CL': []
+    }
+    sample_keys = list(samples.keys())
+    sample_labels = (
+            [sample_keys[0]] * number_samples[0] +
+            [sample_keys[1]] * number_samples[1] +
+            [sample_keys[2]] * number_samples[2] +
+            [sample_keys[3]] * number_samples[3] +
+            [sample_keys[4]] * number_samples[4]
+    )
     for sample_type, path in zip(sample_labels, dataPath):  # Read data and categorize based on sample type
         df = pd.read_excel(path)
         segments = getSegments(df)
         samples[sample_type].append(segments)
 
-    dict_tempSweeps = {}  # Initialize dictionaries to hold the results
+    dict_data = {}  # Initialize dictionaries to hold the results
 
     for sample_type in samples:  # Populate dictionaries with consolidated sample data
-        dict_tempSweeps[f'{sample_type} time'] = [s['time'] for s in samples[sample_type]]
-        dict_tempSweeps[f'{sample_type} height'] = [s['height'] for s in samples[sample_type]]
-        dict_tempSweeps[f'{sample_type} force'] = [s['force'] for s in samples[sample_type]]
-        dict_tempSweeps[f'{sample_type} time to break'] = [s['time to break'] for s in samples[sample_type]]
-        dict_tempSweeps[f'{sample_type} height to break'] = [s['height to break'] for s in samples[sample_type]]
-        dict_tempSweeps[f'{sample_type} force to break'] = [s['force to break'] for s in samples[sample_type]]
+        dict_data[f'{sample_type} time to break'] = [s['time to break'] for s in samples[sample_type]]
+        dict_data[f'{sample_type} height to break'] = [s['height to break'] for s in samples[sample_type]]
+        dict_data[f'{sample_type} force to break'] = [s['force to break'] for s in samples[sample_type]]
 
-    return dict_tempSweeps
+    return dict_data, sample_keys
 
 
-def plotCompression(nSamples, sampleName,
+def plotCompression(sampleName,
                     ax, x, y,
                     axTitle, yLabel, yLim, xLabel, xLim, axisColor,
                     curveColor, markerStyle, markerFColor, markerEColor, markerEWidth=0.5,
@@ -111,110 +136,111 @@ def plotCompression(nSamples, sampleName,
         ax.yaxis.set_major_locator(MultipleLocator(100))
         ax.yaxis.set_minor_locator(MultipleLocator(50))
 
-        if strain:
-            ax.plot(
-                x, y,
-                color=curveColor, alpha=0.8, lw=1.5, linestyle=':',
-                label=f'{sampleName}', zorder=3)
+    if strain:
+        ax.plot(
+            x, y,
+            color=curveColor, alpha=0.8, lw=1.5, linestyle=':',
+            label=f'{sampleName}', zorder=3)
 
-        elif linearFitting:
-            # configs to split the values at the linear elastic region
-            startVal, endVal = 6, 16
-            x_toFit, y_toFit = arraySplit(x, y, startVal, endVal)
-            (slope, intercept), covariance = curve_fit(fitLinear, x_toFit, y_toFit)  # p0=(y_mean[0], y_mean[-1], 100))
-            (slopeErr, interceptErr) = np.sqrt(np.diag(covariance))
+    elif linearFitting:
+        # configs to split the values at the linear elastic region
+        startVal, endVal = 6, 16
+        x_toFit, y_toFit = arraySplit(x, y, startVal, endVal)
+        (slope, intercept), covariance = curve_fit(fitLinear, x_toFit, y_toFit)  # p0=(y_mean[0], y_mean[-1], 100))
+        (slopeErr, interceptErr) = np.sqrt(np.diag(covariance))
 
-            xFit = np.linspace(startVal, endVal, 100)
-            yFit = fitLinear(xFit, slope, intercept)
-            ax.plot(
-                xFit, yFit,
-                color='crimson', alpha=0.8, lw=1.25, linestyle='-',
-                label=f'Linear fitting', zorder=4)
+        xFit = np.linspace(startVal, endVal, 100)
+        yFit = fitLinear(xFit, slope, intercept)
+        ax.plot(
+            xFit, yFit,
+            color='crimson', alpha=0.8, lw=1.25, linestyle='-',
+            label=f'Linear fitting', zorder=4)
 
-            # show text and rectangle at the linear region
-            textLabel, textCoord = 'Linear elastic region', (xFit[-1] + 2, np.median(yFit))
-            textConfig = {'horizontalalignment': 'left', 'verticalalignment': 'top', 'color': 'crimson', 'size': 10}
-            rectConfig = [(xFit[0], 0), xFit[-1] - xFit[0], yFit[-1] + 2]
-            ax.text(textCoord[0], textCoord[1], s=textLabel, **textConfig)
+        # show text and rectangle at the linear region
+        textLabel, textCoord = 'Linear elastic region', (xFit[-1] + 2, np.median(yFit))
+        textConfig = {'horizontalalignment': 'left', 'verticalalignment': 'top', 'color': 'crimson', 'size': 10}
+        rectConfig = [(xFit[0], 0), xFit[-1] - xFit[0], yFit[-1] + 2]
+        ax.text(textCoord[0], textCoord[1], s=textLabel, **textConfig)
 
-            textLabel, textCoord = (
-                f'YM = ${slope*100:.1f}$ $±$ ${slopeErr*100:.1f}$ $Pa$', (xFit[-1] + 1, np.median(yFit) - 20))
-            textConfig = {'horizontalalignment': 'left', 'verticalalignment': 'top', 'color': 'k', 'size': 9}
-            ax.text(textCoord[0], textCoord[1], s=textLabel, **textConfig)
+        textLabel, textCoord = (
+            f'YM = ${slope * 100:.1f}$ $±$ ${slopeErr * 100:.1f}$ $Pa$', (xFit[-1] + 1, np.median(yFit) - 20))
+        textConfig = {'horizontalalignment': 'left', 'verticalalignment': 'top', 'color': 'k', 'size': 9}
+        ax.text(textCoord[0], textCoord[1], s=textLabel, **textConfig)
 
-            textLabel, textCoord = f'{startVal}%', (xFit[0] + 0.5, 3)
-            textConfig = {'horizontalalignment': 'left', 'verticalalignment': 'bottom', 'color': 'k', 'size': 8}
-            ax.text(textCoord[0], textCoord[1], s=textLabel, **textConfig, zorder=5)
+        textLabel, textCoord = f'{startVal}%', (xFit[0] + 0.5, 3)
+        textConfig = {'horizontalalignment': 'left', 'verticalalignment': 'bottom', 'color': 'k', 'size': 8}
+        ax.text(textCoord[0], textCoord[1], s=textLabel, **textConfig, zorder=5)
 
-            textLabel, textCoord = f'{endVal}%', (xFit[-1] - 0.5, 3)
-            textConfig = {'horizontalalignment': 'right', 'verticalalignment': 'bottom', 'color': 'k', 'size': 8}
-            ax.text(textCoord[0], textCoord[1], s=textLabel, **textConfig, zorder=5)
+        textLabel, textCoord = f'{endVal}%', (xFit[-1] - 0.5, 3)
+        textConfig = {'horizontalalignment': 'right', 'verticalalignment': 'bottom', 'color': 'k', 'size': 8}
+        ax.text(textCoord[0], textCoord[1], s=textLabel, **textConfig, zorder=5)
 
-            rect = Rectangle(
-                *rectConfig, linewidth=1, edgecolor='w', facecolor='crimson', alpha=0.1, zorder=1)
-            ax.add_patch(rect)
+        rect = Rectangle(
+            *rectConfig, linewidth=1, edgecolor='w', facecolor='crimson', alpha=0.1, zorder=1)
+        ax.add_patch(rect)
 
-        else:
-            ax.errorbar(
-                x, y, 0,
-                color=curveColor, alpha=0.85,
-                fmt=markerStyle, markersize=6, mfc=markerFColor, mec=markerEColor, mew=markerEWidth,
-                capsize=0, lw=1, linestyle='',
-                label=f'{sampleName}',
-                zorder=3)
-
-    # x = np.mean(x, axis=0)
-    # yerr = np.std(y, axis=0)
-    # y = np.mean(y, axis=0)
+    else:
+        ax.errorbar(
+            x, y, 0,
+            color=curveColor, alpha=0.85,
+            fmt=markerStyle, markersize=6, mfc=markerFColor, mec=markerEColor, mew=markerEWidth,
+            capsize=0, lw=1, linestyle='',
+            label=f'{sampleName}',
+            zorder=3)
     legendLabel()
     configPlot()
 
 
-def main(dataPath):
+def main(dataPath, fileName):
     fonts('C:/Users/petrus.kirsten/AppData/Local/Microsoft/Windows/Fonts/')
-    # samplesQuantities = list(samplesValues.keys())
-
-    fileName = '10pct_0WSt_and_Car-CompressionToBreakage'
-    dirSave = Path(*Path(filePath[0]).parts[:Path(filePath[0]).parts.index('data') + 1])
+    plt.style.use('seaborn-v0_8-ticks')
 
     fig, axForce = plt.subplots(figsize=(8, 8), facecolor='w', ncols=1)
 
-    plt.style.use('seaborn-v0_8-ticks')
     fig.suptitle(f'Compression modulus')
-    forceColor, strainColor = 'whitesmoke', 'mediumseagreen'
 
-    st5_nSamples, st10_nSamples, ic10_nSamples, kc10_nSamples = 0, 0, 0, 1
-    data = getSamplesData(dataPath)
+    nSamples, colorSamples = getSamplesInfos(
+        3, 2, 5,
+        4, 2,
+        'chocolate', 'mediumvioletred', 'steelblue',
+        'lightcoral', 'crimson')
 
-    force_10kc, strain_10kc = (
-        data['10% WSt kCar force to break'][0],
-        data['10% WSt kCar height to break'][0])
-    stress_10kc = force_10kc / (30/1000)
+    raw_data, labels = getSamplesData(dataPath, nSamples)
+
+    data = {
+        labels[0]: ([], []),
+        labels[1]: ([], []),
+        labels[2]: ([], []),
+        labels[3]: ([], []),
+        labels[4]: ([], []),
+    }
+
+    for k, (x, y) in data.items():
+        x.append(raw_data[f'{k} height to break'])
+        y.append(raw_data[f'{k} force to break'])
 
     (fTitle, fLimits,
      hTitle, hLimits) = (
         f'Stress (Pa)', (0, 600),
         f'Strain', (0, 100))
 
-    plotCompression(
-        nSamples=kc10_nSamples,
-        ax=axForce, x=strain_10kc, y=stress_10kc, axisColor='k',
-        axTitle='', yLabel=fTitle, yLim=fLimits, xLabel=hTitle, xLim=hLimits,
-        curveColor=forceColor, markerStyle='o', markerFColor=forceColor, markerEColor='k',
-        linearFitting=True, sampleName=f'')
+    for k, c in zip(data, colorSamples):
+        strain, stress = np.mean(data[k][0], axis=1)[0], np.mean(data[k][1], axis=1)[0]
+        stressErr = np.std(data[k][0], axis=1)[0]
 
-    plotCompression(
-        nSamples=kc10_nSamples,
-        ax=axForce, x=strain_10kc, y=stress_10kc, axisColor='k',
-        axTitle='', yLabel=fTitle, yLim=fLimits, xLabel=hTitle, xLim=hLimits,
-        curveColor=forceColor, markerStyle='o', markerFColor=forceColor, markerEColor='k',
-        sampleName=f'Test')
+        plotCompression(
+            ax=axForce, x=strain, y=stress, axisColor='k',
+            axTitle='', yLabel=fTitle, yLim=fLimits, xLabel=hTitle, xLim=hLimits,
+            curveColor=c, markerStyle='o', markerFColor=c, markerEColor='k',
+            linearFitting=False, sampleName=f'{k}')
+
     # axForce.spines['left'].set_color(forceColor)
     # axForce.spines['right'].set_color(strainColor)
 
     plt.subplots_adjust(wspace=0.175, top=0.940, bottom=0.08, left=0.09, right=0.96)
-    # plt.tight_layout()
     plt.show()
+
+    dirSave = Path(*Path(filePath[0]).parts[:Path(filePath[0]).parts.index('data') + 1])
     fig.savefig(f'{dirSave}' + f'\\{fileName}' + '.png', facecolor='w', dpi=600)
 
     print(f'\n\n· Chart saved at\n{dirSave}.')
@@ -223,8 +249,35 @@ def main(dataPath):
 if __name__ == '__main__':
     folderPath = "C:/Users/petrus.kirsten/PycharmProjects/RheometerPlots/data"
     # folderPath = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data"
+
     filePath = [
-        folderPath + "/old/200924/7PSt_2_Compression.xlsx"
+        # 0St/CL
+        folderPath + "/171024/10_0St_CL/10_0St_CL-compression-1.xlsx",
+        folderPath + "/171024/10_0St_CL/10_0St_CL-compression-2.xlsx",
+        folderPath + "/171024/10_0St_CL/10_0St_CL-compression-3.xlsx",
+
+        # 0St + kCar/CL
+        folderPath + "/171024/10_0St_kC_CL/10_0St_kC_CL-compression-1.xlsx",
+        folderPath + "/171024/10_0St_kC_CL/10_0St_kC_CL-compression-2.xlsx",
+
+        # 0St + iCar/CL
+        folderPath + "/171024/10_0St_iC_CL/10_0St_iC_CL-compression-1.xlsx",
+        folderPath + "/171024/10_0St_iC_CL/10_0St_iC_CL-compression-2b.xlsx",
+        folderPath + "/171024/10_0St_iC_CL/10_0St_iC_CL-compression-3.xlsx",
+        folderPath + "/171024/10_0St_iC_CL/10_0St_iC_CL-compression-4.xlsx",
+        folderPath + "/171024/10_0St_iC_CL/10_0St_iC_CL-compression-5.xlsx",
+
+        # kC
+        folderPath + "/231024/kC/kC-compression-1.xlsx",
+        folderPath + "/231024/kC/kC-compression-2.xlsx",
+        folderPath + "/231024/kC/kC-compression-3.xlsx",
+        folderPath + "/231024/kC/kC-compression-4.xlsx",
+
+        # kC/CL
+        # folderPath + "/231024/kC_CL/kC_CL-compression-1.xlsx",   # 299
+        # folderPath + "/231024/kC_CL/kC_CL-compression-1b.xlsx",  # 299
+        folderPath + "/231024/kC_CL/kC_CL-compression-3.xlsx",   # 99
+        folderPath + "/231024/kC_CL/kC_CL-compression-4.xlsx",   # 99
     ]
 
-    main(dataPath=filePath)
+    main(filePath, '0St_Car_andCL-CompressionToBreakage')

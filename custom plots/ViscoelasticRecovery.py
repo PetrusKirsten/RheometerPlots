@@ -303,10 +303,12 @@ def main(dataPath, fileName):
         x.append(data[f'{key}_freq'])
         gP.append(data[f'{key}_storage'])
         gD.append(data[f'{key}_loss'])
+
     for key, (x, gP, gD) in listAfter.items():
         x.append(data[f'{key}_freq_broken'])
         gP.append(data[f'{key}_storage_broken'])
         gD.append(data[f'{key}_loss_broken'])
+
     for k_a, k_b, c in zip(listAfter, listBefore, colorSamples):
         gP, gD = np.mean(listBefore[k_a][1], axis=1)[0], np.mean(listBefore[k_a][2], axis=1)[0]
         gPerr, gDerr = np.std(listBefore[k_a][1], axis=1)[0], np.std(listBefore[k_a][2], axis=1)[0]
