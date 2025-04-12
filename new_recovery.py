@@ -178,8 +178,8 @@ def starch(folderPath):
 
     # plotOFS(stCL_recovery)
 
-    df, an, tk = statisticalAnalysis(stCL_recovery)
-    tk_letters = lettersTukey(tk)
+    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery)
+    tkLetters_pre = lettersTukey(tk_pre)
 
     plotBars(stCL_recovery, 'K', 2500)
     # plotBars(stCL_recovery, 'n', .2)
