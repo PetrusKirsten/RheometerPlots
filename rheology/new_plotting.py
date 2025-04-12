@@ -99,39 +99,42 @@ def lettersTukey(tukey_result):
 
         return dict(sorted(group_dict.items(), key=lambda item: extractNumber(item[0])))
 
-    # Extract the Tukey HSD result table
     results = pd.DataFrame(tukey_result._results_table.data[1:], columns=tukey_result._results_table.data[0])
 
-    # Create a quick-access lookup for p-values using unordered group pair keys
+    # Make dict to check if two groups are significantly different
     reject_dict = {
         frozenset([row['group1'], row['group2']]): row['reject']
         for _, row in results.iterrows()
     }
 
-    # Get all unique groups
+    # Get all unique group names
     groups = sorted(set(results['group1']) | set(results['group2']))
 
+    # Initialize: letter_groups will hold sets of group names per letter
     letter_groups = []
 
     for group in groups:
-        placed = False
         for letter_group in letter_groups:
-            # Check for conflict with existing letter group
+            # If group is NOT significantly different from all members of this letter_group
             if all(not reject_dict.get(frozenset([group, other]), False) for other in letter_group):
-                letter_group.append(group)
-                placed = True
-                break
-        if not placed:
-            letter_groups.append([group])
+                letter_group.add(group)
+        # Start a new letter group just for this group (always added)
+        letter_groups.append({group})
 
-    # Assign letters
-    group_to_letter = {}
-    for i, group_set in enumerate(letter_groups):
+    # Remove duplicates: consolidate identical sets
+    unique_groups = []
+    for g in letter_groups:
+        if not any(g <= existing for existing in unique_groups):
+            unique_groups.append(g)
+
+    # Assign letters (possibly multiple per group)
+    group_to_letters = {group: '' for group in groups}
+    for i, group_set in enumerate(unique_groups):
         letter = string.ascii_uppercase[i]
         for group in group_set:
-            group_to_letter[group] = letter
+            group_to_letters[group] += letter
 
-    return sortByNumber(group_to_letter)
+    return sortByNumber(group_to_letters)
 
 
 class OoRecovery:
@@ -460,8 +463,11 @@ def plotOFS(samples, save=False):
             facecolor='w', dpi=resolution)
 
 
-def plotBars(samples, param, lim, save=False):
+def plotBars(samples, param, lim, signifPre, signifPost, save=False):
     """
+    :param signifPre:
+    :param signifPost:
+    :param significance:
     :param lim:
     :param samples:
     :type param: str
@@ -496,7 +502,7 @@ def plotBars(samples, param, lim, save=False):
             # ax.grid(True, which='major', axis='y', linestyle='-', linewidth=.75, color='lightgray', alpha=.5)
             # ax.grid(True, which='minor', axis='y', linestyle='-', linewidth=.5, color='lightgray', alpha=.5)
 
-            xLim, yLim = (min(xData) - 2, max(xData) + 2), lim
+            xLim, yLim = (min(xData) - 4, max(xData) + 4), lim
 
             ax.set_xlabel(f'{xLabel}', color=axisColor), ax.set_ylabel(f'{yLabel}', color=axisColor)
             ax.set_xscale('linear'), ax.set_yscale('linear')
@@ -546,9 +552,9 @@ def plotBars(samples, param, lim, save=False):
         legend.get_frame().set_facecolor('w')
         legend.get_frame().set_edgecolor('w')
 
-    def addMarkers(ax, x, y, yerr, color, marker, label):
+    def addMarkers(ax, x, y, yerr, color, marker, label, significance):
 
-        transp = .85
+        transp = 1.
 
         # Plot line
         ax.plot(
@@ -578,18 +584,29 @@ def plotBars(samples, param, lim, save=False):
             capsize=0, capthick=0, linestyle='', lw=0,
             zorder=3)
 
+        for letter, xi, yi, yerri in zip(significance.values(), x, y, yerr):
+            ax.text(
+                xi, yi + lim * .04 if yerr is not None else .04,
+                f'{letter}\n'
+                r"$\mathbf{" + f'{yi:.0f} ~ ± ~ {5*yerri:.0f} ~ Pa' + r"}$",
+                ha='center', va='bottom',
+                fontsize=12, color='k', alpha=transp,
+                bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.15', alpha=0.8),
+                zorder=4
+            )
+
     xData, yDataPre, yErrDataPre, yDataPost, yErrDataPost = readData()
 
     windowTitle = f'Power law fitting - {param}'
     fig, [axs], resolution = configFigure()
 
-    for legend, yData, yDataErr in [
-        ('Before shear', yDataPre, yErrDataPre),
-        ('After shear', yDataPost, yErrDataPost)
-    ]:
+    for legend, yData, yDataErr, letters in [
+        ('Before shear', yDataPre, yErrDataPre, signifPre),
+        ('After shear', yDataPost, yErrDataPost, signifPost)]:
+
         addMarkers(
             ax=axs, x=xData, y=yData, yerr=yDataErr,
-            color=samples[-2].color, marker='o', label=legend)
+            color=samples[-2].color, marker='o', label=legend, significance=letters)
 
     addLegend(axs)
 

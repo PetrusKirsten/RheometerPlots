@@ -178,10 +178,13 @@ def starch(folderPath):
 
     # plotOFS(stCL_recovery)
 
-    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery)
-    tkLetters_pre = lettersTukey(tk_pre)
+    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery, which='pre')
+    df_post, an_post, tk_post = statisticalAnalysis(stCL_recovery, which='post')
 
-    plotBars(stCL_recovery, 'K', 2500)
+    plotBars(
+        stCL_recovery, 'K', 2500,
+        lettersTukey(tk_pre), lettersTukey(tk_post)
+    )
     # plotBars(stCL_recovery, 'n', .2)
 
 def starch_kappa(folderPath):
@@ -279,7 +282,7 @@ if __name__ == '__main__':
     # iota(path)
 
     starch(path)
-    starch_kappa(path)
-    starch_iota(path)
+    # starch_kappa(path)
+    # starch_iota(path)
 
     plt.show()
