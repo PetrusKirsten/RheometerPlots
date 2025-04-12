@@ -502,7 +502,7 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
             # ax.grid(True, which='major', axis='y', linestyle='-', linewidth=.75, color='lightgray', alpha=.5)
             # ax.grid(True, which='minor', axis='y', linestyle='-', linewidth=.5, color='lightgray', alpha=.5)
 
-            xLim, yLim = (min(xData) - 4, max(xData) + 4), lim
+            xLim, yLim = (min(xData) - 1, max(xData) + 6), lim
 
             ax.set_xlabel(f'{xLabel}', color=axisColor), ax.set_ylabel(f'{yLabel}', color=axisColor)
             ax.set_xscale('linear'), ax.set_yscale('linear')
@@ -554,6 +554,25 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
 
     def addMarkers(ax, x, y, yerr, color, marker, label, significance):
 
+        def addLetters():
+            for letter, xi, yi, yerri in zip(significance.values(), x, y, yerr):
+
+                yerri = yerri*7 if yerri <= 5 else yerri
+
+                offset = yi*.1 if xi == 0 else 0
+                offset = -2*offset if 'After' in label else offset
+                offset = 0
+
+                ax.text(
+                    (xi + max(x)*.03), yi + offset,
+                    f'{letter}\n'
+                    r"$\mathbf{" + f'{yi:.0f} ~ ± ~ {1 * yerri:.0f} ~ Pa' + r"}$",
+                    ha='left', va='bottom',
+                    fontsize=12, color='k', alpha=0.85,
+                    bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.15', alpha=0.8),
+                    zorder=4
+                )
+
         transp = 1.
 
         # Plot line
@@ -570,7 +589,7 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
             color=color, mfc=color,
             alpha=transp,
             mec='w', mew=.75,
-            capsize=2.5, capthick=1, linestyle='', lw=1,
+            capsize=2.5, capthick=1, linestyle='-', lw=1,
             zorder=2)
 
         # Plot markers
@@ -584,16 +603,7 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
             capsize=0, capthick=0, linestyle='', lw=0,
             zorder=3)
 
-        for letter, xi, yi, yerri in zip(significance.values(), x, y, yerr):
-            ax.text(
-                xi, yi + lim * .04 if yerr is not None else .04,
-                f'{letter}\n'
-                r"$\mathbf{" + f'{yi:.0f} ~ ± ~ {5*yerri:.0f} ~ Pa' + r"}$",
-                ha='center', va='bottom',
-                fontsize=12, color='k', alpha=transp,
-                bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.15', alpha=0.8),
-                zorder=4
-            )
+        addLetters()
 
     xData, yDataPre, yErrDataPre, yDataPost, yErrDataPost = readData()
 
