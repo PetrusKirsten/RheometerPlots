@@ -300,8 +300,8 @@ if __name__ == '__main__':
     # kappa(path)
     # iota(path)
 
-    starch(path)
-    starch_kappa(path)
-    # starch_iota(path)
+    # starch(path)
+    # starch_kappa(path)
+    starch_iota(path)
 
     plt.show()

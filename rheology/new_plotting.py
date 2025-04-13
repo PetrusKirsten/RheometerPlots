@@ -1,15 +1,16 @@
 import string
-
 import numpy as np
 import pandas as pd
-
 from math import ceil
-from matplotlib import pyplot as plt
-from scipy.optimize import curve_fit
+
+import matplotlib.colors as mcolors
+from matplotlib import pyplot as plt, cm
 from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import MultipleLocator
 from matplotlib.font_manager import FontProperties
+
 from scipy.stats import f_oneway
+from scipy.optimize import curve_fit
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 qntsMisc = ['SegIndex', 't in s', 'h in mm', 'T in °C', 't_seg in s']
@@ -467,7 +468,6 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
     """
     :param signifPre:
     :param signifPost:
-    :param significance:
     :param lim:
     :param samples:
     :type param: str
@@ -491,7 +491,7 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
         else:
             return cacl, n_pre, nErr_pre, n_post, nErr_post
 
-    def configFigure(width=2250, heigth=2500, dpi=300):
+    def configFigure(width=2800, heigth=2500, dpi=300):
 
         def configAxes(ax, xLabel, yLabel, axisColor='#303030'):
 
@@ -510,7 +510,7 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
             ax.xaxis.set_major_locator(MultipleLocator(7))
             # ax.xaxis.set_minor_locator(MultipleLocator(10))
 
-            ax.set_ylim((0, yLim))
+            ax.set_ylim((-100, yLim))
             ax.yaxis.set_major_locator(MultipleLocator(yLim / 5))
             ax.yaxis.set_minor_locator(MultipleLocator(yLim / 25))
 
@@ -526,7 +526,7 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
 
         figure = plt.figure(figsize=(width / dpi, heigth / dpi), facecolor='snow')
         figure.canvas.manager.set_window_title(windowTitle)
-        figure.suptitle(f'')
+        figure.suptitle(f'{samples[0].label.split('CL')[0].strip()}' + ' CL')
 
         rows, columns = 1, 1
         gs = GridSpec(rows, columns, width_ratios=[1], height_ratios=[1])
@@ -552,26 +552,39 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
         legend.get_frame().set_facecolor('w')
         legend.get_frame().set_edgecolor('w')
 
-    def addMarkers(ax, x, y, yerr, color, marker, label, significance):
+    def drawData(ax, x, y, yerr, color, marker, label, significance, cmap_values):
 
         def addLetters():
-            for letter, xi, yi, yerri in zip(significance.values(), x, y, yerr):
+            for letter, xi, yi, yerri, pct in zip(significance.values(), x, y, yerr, cmap_values):
 
                 yerri = yerri*7 if yerri <= 5 else yerri
 
                 offset = yi*.1 if xi == 0 else 0
                 offset = -2*offset if 'After' in label else offset
-                offset = 0
+                # offset = lim*.01
+
+                pct = '' if 'Before' in label else f'\n{pct:.0f}%'
 
                 ax.text(
                     (xi + max(x)*.03), yi + offset,
                     f'{letter}\n'
-                    r"$\mathbf{" + f'{yi:.0f} ~ ± ~ {1 * yerri:.0f} ~ Pa' + r"}$",
+                    r"$\mathbf{" + f'{yi:.0f} ~ ± ~ {1 * yerri:.0f} ~ Pa' + r"}$"
+                    f'{pct}',
                     ha='left', va='bottom',
                     fontsize=12, color='k', alpha=0.85,
                     bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.15', alpha=0.8),
                     zorder=4
                 )
+
+        def addColorBar():
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])  # Necessário para o ScalarMappable funcionar
+            cbar = plt.colorbar(sm, ax=ax, pad=.02)
+            cbar.set_label('Viscoelastic recovery', rotation=270, labelpad=15)
+            ticks = cbar.get_ticks()
+            tick_labels = [f'{tick:.0f}%' for tick in ticks]
+            cbar.set_ticklabels(tick_labels)
+            cbar.outline.set_linewidth(1)
 
         transp = 1.
 
@@ -592,9 +605,44 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
             capsize=2.5, capthick=1, linestyle='-', lw=1,
             zorder=2)
 
-        # Plot markers
+        # Plot markers with colormap
+        if cmap_values is not None:
+            norm = mcolors.Normalize(vmin=min(cmap_values), vmax=max(cmap_values))
+            norm = mcolors.Normalize(vmin=0, vmax=100)
+            cmap = cm.get_cmap('RdYlGn')
+
+            for xi, yi, val in zip(x, y, cmap_values):
+                cor = cmap(norm(val))
+                ax.errorbar(
+                    xi, yi, 0,
+                    fmt=marker, markersize=11,
+                    label=None,
+                    color=cor,
+                    mfc=cor if 'Before' in label else 'w',
+                    alpha=transp,
+                    mec='#383838' if 'Before' in label else cor,
+                    mew=1.0 if 'Before' in label else 1.75,
+                    capsize=0, capthick=0, linestyle='', lw=0,
+                    zorder=3)
+
+            if 'After' in label:
+                addColorBar()
+
+        else:
+            # Se não tiver colormap, usa cor fixa
+            ax.errorbar(
+                x, y, 0,
+                fmt=marker, markersize=10,
+                label=None,
+                color=color, mfc=color if 'Before' in label else 'w',
+                alpha=transp,
+                mec='#383838' if 'Before' in label else color, mew=1,
+                capsize=0, capthick=0, linestyle='', lw=0,
+                zorder=3)
+
+        # Plot for legend
         ax.errorbar(
-            x, y, 0,
+            -10, -10, 0,
             fmt=marker, markersize=10,
             label=label,
             color=color, mfc=color if 'Before' in label else 'w',
@@ -610,13 +658,16 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
     windowTitle = f'Power law fitting - {param}'
     fig, [axs], resolution = configFigure()
 
-    for legend, yData, yDataErr, letters in [
-        ('Before shear', yDataPre, yErrDataPre, signifPre),
-        ('After shear', yDataPost, yErrDataPost, signifPost)]:
+    recovery = (np.array(yDataPost) / np.array(yDataPre))  * 100
 
-        addMarkers(
+    for legend, yData, yDataErr, letters, cmap_vals in [
+        ('Before shear', yDataPre, yErrDataPre, signifPre, recovery),
+        ('After shear', yDataPost, yErrDataPost, signifPost, recovery)]:
+
+        drawData(
             ax=axs, x=xData, y=yData, yerr=yDataErr,
-            color=samples[-2].color, marker='o', label=legend, significance=letters)
+            color='k', marker='o', label=legend,
+            significance=letters, cmap_values=cmap_vals)
 
     addLegend(axs)
 
