@@ -146,6 +146,113 @@ from rheology.new_plotting import plotOFS, plotBars
 #
 #     # iotas.plotHeatMap(show=False)
 
+def kappa(folderPath):
+
+    filePath_0 = [
+        # kC
+        folderPath + "/kC/kC-viscoelasticRecovery-1.xlsx",
+        folderPath + "/kC/kC-viscoelasticRecovery-2.xlsx",
+        folderPath + "/kC/kC-viscoelasticRecovery-3.xlsx",
+    ]
+    filePath_7 = [
+        # kC CL 7
+        folderPath + "/kC_CL_7/kC_CL-viscoelasticRecovery-1.xlsx",
+        folderPath + "/kC_CL_7/kC_CL-viscoelasticRecovery-2.xlsx",
+        folderPath + "/kC_CL_7/kC_CL-viscoelasticRecovery-3.xlsx",
+        folderPath + "/kC_CL_7/kC_CL-viscoelasticRecovery-4.xlsx",
+    ]
+    filePath_14 = [
+        # kC CL 14
+        folderPath + "/kC_CL_14/kC_CL_14-viscoelasticRecovery-1.xlsx",
+        folderPath + "/kC_CL_14/kC_CL_14-viscoelasticRecovery-2.xlsx",
+    ]
+    filePath_21 = [
+        # kC CL 21
+        folderPath + "/kC_CL_21/kC_CL_21-viscoelasticRecovery-1.xlsx",
+        # folderPath + "/kC_CL_21/kC_CL_21-viscoelasticRecovery-2.xlsx",
+        folderPath + "/kC_CL_21/kC_CL_21-viscoelasticRecovery-3.xlsx",
+    ]
+    filePath_28 = [
+        # kC CL 28
+        folderPath + "/kC_CL_28/kC_CL_28-viscoelasticRecovery-1.xlsx",
+        folderPath + "/kC_CL_28/kC_CL_28-viscoelasticRecovery-2.xlsx",
+    ]
+    filePath_42 = [
+        # kC CL 42
+        folderPath + "/kC_CL_42/kC_CL_42-viscoelasticRecovery-1.xlsx",
+        folderPath + "/kC_CL_42/kC_CL_42-viscoelasticRecovery-2.xlsx",
+        # folderPath + "/kC_CL_42/kC_CL_42-viscoelasticRecovery-3.xlsx",
+        # folderPath + "/kC_CL_42/kC_CL_42-viscoelasticRecovery-4.xlsx",
+    ]
+
+    stCL_recovery = [
+        OoRecovery(filePath_0, 'kCar CL 0', '#E64B83'),
+        OoRecovery(filePath_7, 'kCar CL 7', '#E64B83'),
+        OoRecovery(filePath_14, 'kCar CL 14', '#E64B83'),
+        OoRecovery(filePath_21, 'kCar CL 21', '#E64B83'),
+        OoRecovery(filePath_28, 'kCar CL 28', '#E64B83'),
+        OoRecovery(filePath_42, 'kCar CL 42', '#E64B83')]
+
+    # plotOFS(stCL_recovery)
+
+    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery, which='pre', param='k')
+    df_post, an_post, tk_post = statisticalAnalysis(stCL_recovery, which='post', param='k')
+
+    plotBars(
+        stCL_recovery, "K", 10000,
+        lettersTukey(tk_pre), lettersTukey(tk_post),
+        save=True
+    )
+    # plotBars(stCL_recovery, 'n', .2)
+
+def iota(folderPath):
+
+    filePath_7 = [
+        # iC CL 7
+        folderPath + "/iC_CL_7/iC_CL_7-viscoelasticRecovery-1.xlsx",
+        folderPath + "/iC_CL_7/iC_CL_7-viscoelasticRecovery-2.xlsx",
+    ]
+    filePath_14 = [
+        # iC CL 14
+        folderPath + "/iC_CL_14/iC_CL_14-viscoelasticRecovery-1.xlsx",
+        folderPath + "/iC_CL_14/iC_CL_14-viscoelasticRecovery-2.xlsx",
+    ]
+    filePath_21 = [
+        # iC CL 21
+        folderPath + "/iC_CL_21/iC_CL_21-viscoelasticRecovery-1.xlsx",
+        folderPath + "/iC_CL_21/iC_CL_21-viscoelasticRecovery-2.xlsx",
+    ]
+    filePath_28 = [
+        # iC CL 28
+        folderPath + "/iC_CL_28/iC_CL_28-viscoelasticRecovery-1.xlsx",
+        folderPath + "/iC_CL_28/iC_CL_28-viscoelasticRecovery-2.xlsx",
+    ]
+    filePath_42 = [
+        # iC CL 42
+        folderPath + "/iC_CL_42/iC_CL_42-viscoelasticRecovery-1.xlsx",
+        folderPath + "/iC_CL_42/iC_CL_42-viscoelasticRecovery-2.xlsx",
+        folderPath + "/iC_CL_42/iC_CL_42-viscoelasticRecovery-3.xlsx",
+    ]
+
+    stCL_recovery = [
+        OoRecovery(filePath_7, 'iCar CL 7', '#E64B83'),
+        OoRecovery(filePath_14, 'iCar CL 14', '#E64B83'),
+        OoRecovery(filePath_21, 'iCar CL 21', '#E64B83'),
+        OoRecovery(filePath_28, 'iCar CL 28', '#E64B83'),
+        OoRecovery(filePath_42, 'iCar CL 42', '#E64B83')]
+
+    # plotOFS(stCL_recovery)
+
+    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery, which='pre', param='k')
+    df_post, an_post, tk_post = statisticalAnalysis(stCL_recovery, which='post', param='k')
+
+    plotBars(
+        stCL_recovery, "K", 50,
+        lettersTukey(tk_pre), lettersTukey(tk_post),
+        save=True
+    )
+    # plotBars(stCL_recovery, 'n', .2)
+
 def starch(folderPath):
     filePath = [
         # St
@@ -178,11 +285,11 @@ def starch(folderPath):
 
     # plotOFS(stCL_recovery)
 
-    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery, which='pre')
-    df_post, an_post, tk_post = statisticalAnalysis(stCL_recovery, which='post')
+    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery, which='pre', param='n')
+    df_post, an_post, tk_post = statisticalAnalysis(stCL_recovery, which='post', param='n')
 
     plotBars(
-        stCL_recovery, 'K', 2500,
+        stCL_recovery, 'n', .15,
         lettersTukey(tk_pre), lettersTukey(tk_post),
         save=True
     )
@@ -226,11 +333,11 @@ def starch_kappa(folderPath):
 
     # plotOFS(stCL_recovery)
 
-    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery, which='pre')
-    df_post, an_post, tk_post = statisticalAnalysis(stCL_recovery, which='post')
+    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery, which='pre', param='n')
+    df_post, an_post, tk_post = statisticalAnalysis(stCL_recovery, which='post', param='n')
 
     plotBars(
-        stCL_recovery, 'K', 12500,
+        stCL_recovery, 'n', .2,
         lettersTukey(tk_pre), lettersTukey(tk_post),
         save=True
     )
@@ -276,16 +383,20 @@ def starch_iota(folderPath):
 
     # plotOFS(stCL_recovery)
 
-    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery, which='pre')
-    df_post, an_post, tk_post = statisticalAnalysis(stCL_recovery, which='post')
+    df_pre, an_pre, tk_pre = statisticalAnalysis(stCL_recovery, which='pre', param='n')
+    df_post, an_post, tk_post = statisticalAnalysis(stCL_recovery, which='post', param='n')
 
+    # plotBars(
+    #     stCL_recovery, 'K', 2500,
+    #     lettersTukey(tk_pre), lettersTukey(tk_post),
+    #     save=True
+    # )
     plotBars(
-        stCL_recovery, 'K', 2500,
+        stCL_recovery, 'n', .2,
         lettersTukey(tk_pre), lettersTukey(tk_post),
         save=True
     )
 
-    # plotBars(stCL_recovery, 'n', .2)
 
 if __name__ == '__main__':
 
@@ -296,12 +407,12 @@ if __name__ == '__main__':
     # path = "C:/Users/petrus.kirsten/PycharmProjects/Rheometer-Plotting/data/by sample"  # CEBB
     # path = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data/by sample"   # Personal
     path = "D:/Documents/GitHub/Rheometer-Plotting/data/by sample"   # New Personal
-    # blends(path)
+
     # kappa(path)
-    # iota(path)
+    iota(path)
 
     # starch(path)
     # starch_kappa(path)
-    starch_iota(path)
+    # starch_iota(path)
 
     plt.show()

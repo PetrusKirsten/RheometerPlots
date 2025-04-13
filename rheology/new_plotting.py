@@ -323,7 +323,7 @@ class OoFlow:
         elif modulus == 'G"':
             y = self.dataMean['G" in Pa', 'mean'][:16]
 
-        self.fitting = curve_fit(function_powerLaw, x, y)
+        # self.fitting = curve_fit(function_powerLaw, x, y)
 
         return self.fitting[0], self.fitting[1], np.sqrt(np.diag(self.fitting[1]))
 
@@ -491,7 +491,7 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
         else:
             return cacl, n_pre, nErr_pre, n_post, nErr_post
 
-    def configFigure(width=2800, heigth=2500, dpi=300):
+    def configFigure(width=2600, heigth=2500, dpi=300):
 
         def configAxes(ax, xLabel, yLabel, axisColor='#303030'):
 
@@ -510,7 +510,7 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
             ax.xaxis.set_major_locator(MultipleLocator(7))
             # ax.xaxis.set_minor_locator(MultipleLocator(10))
 
-            ax.set_ylim((-100, yLim))
+            ax.set_ylim((0, yLim))
             ax.yaxis.set_major_locator(MultipleLocator(yLim / 5))
             ax.yaxis.set_minor_locator(MultipleLocator(yLim / 25))
 
@@ -555,15 +555,24 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
     def drawData(ax, x, y, yerr, color, marker, label, significance, cmap_values):
 
         def addLetters():
-            for letter, xi, yi, yerri, pct in zip(significance.values(), x, y, yerr, cmap_values):
+            for letter, xi, yi, yerri in zip(significance.values(), x, y, yerr):
 
-                yerri = yerri*7 if yerri <= 5 else yerri
+                yerri = yerri*10 if yerri <= 1 else yerri
+                yerri = yerri*5 if yerri <= 1 else yerri
+                ax.errorbar(
+                    xi, yi, yerri,
+                    label='', fmt='none', markersize=0,
+                    color=color, mfc=color,
+                    alpha=transp,
+                    mec='w', mew=.75,
+                    capsize=2.5, capthick=1, linestyle='-', lw=1,
+                    zorder=2)
 
                 offset = yi*.1 if xi == 0 else 0
                 offset = -2*offset if 'After' in label else offset
-                # offset = lim*.01
-
-                pct = '' if 'Before' in label else f'\n{pct:.0f}%'
+                offset = lim*.01
+                pct = '' #if 'Before' in label else f'\n{pct:.0f}%'
+                dec = 2
 
                 ax.text(
                     (xi + max(x)*.03), yi + offset,
@@ -596,14 +605,7 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
             zorder=1)
 
         # Plot error lines
-        ax.errorbar(
-            x, y, yerr,
-            label='', fmt='none', markersize=0,
-            color=color, mfc=color,
-            alpha=transp,
-            mec='w', mew=.75,
-            capsize=2.5, capthick=1, linestyle='-', lw=1,
-            zorder=2)
+
 
         # Plot markers with colormap
         if cmap_values is not None:
@@ -661,15 +663,15 @@ def plotBars(samples, param, lim, signifPre, signifPost, save=False):
     recovery = (np.array(yDataPost) / np.array(yDataPre))  * 100
 
     for legend, yData, yDataErr, letters, cmap_vals in [
-        ('Before shear', yDataPre, yErrDataPre, signifPre, recovery),
-        ('After shear', yDataPost, yErrDataPost, signifPost, recovery)]:
+        ('Before shear', yDataPre, yErrDataPre, signifPre, None)]:
+        # ('After shear', yDataPost, yErrDataPost, signifPost, None)]:
 
         drawData(
             ax=axs, x=xData, y=yData, yerr=yDataErr,
-            color='k', marker='o', label=legend,
-            significance=letters, cmap_values=cmap_vals)
+            color='#57cc99', marker='o', label=legend,
+            significance=letters, cmap_values=None)
 
-    addLegend(axs)
+    # addLegend(axs)
 
     plt.tight_layout()
     # plt.show()

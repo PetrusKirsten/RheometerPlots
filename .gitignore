@@ -13,3 +13,5 @@ __pycache__/gui.cpython-311.pyc
 /dist
 *.spec
 >>>>>>> Stashed changes
+*.svg
+*.png
