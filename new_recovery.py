@@ -408,8 +408,8 @@ if __name__ == '__main__':
     # path = "C:/Users/Petrus Kirsten/Documents/GitHub/RheometerPlots/data/by sample"   # Personal
     path = "D:/Documents/GitHub/Rheometer-Plotting/data/by sample"   # New Personal
 
-    # kappa(path)
-    iota(path)
+    kappa(path)
+    # iota(path)
 
     # starch(path)
     # starch_kappa(path)
